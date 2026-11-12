@@ -10,4 +10,7 @@ export interface OrbitalState {
   trueAnomalyRad: number;
   radiusM: number;
   speedMS: number;
+  /** Cartesian position in the orbital plane, with periapsis on +x from the focus. */
+  positionXM: number;
+  positionYM: number;
 }

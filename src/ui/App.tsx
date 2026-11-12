@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { lessons } from '../content/lessons';
 import { PLANET_ECCENTRICITIES, PLANET_ECCENTRICITY_SOURCE } from '../content/planetEccentricities';
 import { ASTRONOMICAL_UNIT_M, ellipseGeometry } from '../physics';
+import KeplerLawsLesson from '../features/lesson-02/KeplerLawsLesson';
 
 type Step = 0 | 1 | 2 | 3;
 
@@ -49,7 +50,7 @@ function OrbitArt({ eccentricity, onSunGuess, submitted }: { eccentricity: numbe
       {canGuess && <circle cx={sunX} cy={cy} r="22" fill="transparent" />}
     </g>
     <g className={canGuess ? 'focus-choice' : ''} onClick={() => canGuess && onSunGuess?.('right')} role={canGuess ? 'button' : undefined} tabIndex={canGuess ? 0 : undefined} aria-label={canGuess ? '오른쪽 초점을 태양의 자리로 선택' : undefined} onKeyDown={(event) => { if (canGuess && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); onSunGuess?.('right'); } }}>
-      <circle cx={secondFocusX} cy={cy} r="6" fill="#18243a" stroke="#e1e8f8" strokeWidth="2" />
+      <circle cx={secondFocusX} cy={cy} r="9" fill="none" stroke="#e1e8f8" strokeWidth="2" strokeDasharray="3 2" />
       {canGuess && <circle cx={secondFocusX} cy={cy} r="22" fill="transparent" />}
     </g>
     {canGuess && <g className="focus-choice" onClick={() => onSunGuess?.('orbit')} role="button" tabIndex={0} aria-label="궤도 위 지점을 태양의 자리로 선택" onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onSunGuess?.('orbit'); } }}><circle cx={cx} cy={cy - b} r="20" fill="transparent"/><circle cx={cx} cy={cy - b} r="4" fill="#c8d2e7"/><title>궤도 위</title></g>}
@@ -136,7 +137,7 @@ export default function App() {
       <nav className="lesson-tabs" aria-label="차시 이동">{lessons.map((item) => <button key={item.id} className={selectedLesson === item.id ? 'active' : ''} onClick={() => setSelectedLesson(item.id)}><span>{item.id}차시</span><small>{['타원 궤도', '속도와 주기', '화성 전이', '실제 탐사'][item.id - 1]}</small></button>)}</nav>
     </header>
 
-    <main className="lesson-main">
+    {selectedLesson === 2 ? <KeplerLawsLesson /> : selectedLesson > 2 ? <main className="lesson-main"><section className="lesson-intro"><div className="lesson-number">{selectedLesson}차시</div><h1>{lesson.title}</h1><p>이 차시는 다음 개발 단계에서 구현합니다.</p></section></main> : <main className="lesson-main">
       <section className="lesson-intro">
         <div className="lesson-number">1차시 · 케플러 제1법칙</div>
         <h1>{lesson.title}</h1>
@@ -214,7 +215,7 @@ export default function App() {
 
         <aside className="teacher-strip"><b>조작 방법</b><p>이심률 손잡이를 끌어 궤도 모양을 바꾸세요. 실제 행성 모드에서는 행성 이름을 눌러 궤도를 비교합니다.</p><button onClick={restartFromBeginning}>처음부터 다시하기</button></aside>
       </section>
-    </main>
+    </main>}
   </div>;
 }
 

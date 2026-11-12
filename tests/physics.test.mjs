@@ -8,16 +8,23 @@ const ts = require('typescript');
 const fs = await import('node:fs/promises');
 const os = await import('node:os');
 const path = await import('node:path');
-const sourcePath = path.resolve('src/physics/kepler.ts');
-const constantsPath = path.resolve('src/physics/constants.ts');
+const sourcePaths = [
+  path.resolve('src/physics/kepler.ts'),
+  path.resolve('src/physics/constants.ts'),
+  path.resolve('src/content/planetOrbitData.ts'),
+  path.resolve('src/content/planetEccentricities.ts'),
+];
 const tempDirectory = await fs.mkdtemp(path.join(os.tmpdir(), 'kepler-physics-'));
-for (const file of [sourcePath, constantsPath]) {
+for (const file of sourcePaths) {
   const source = await fs.readFile(file, 'utf8');
   const output = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
   await fs.writeFile(path.join(tempDirectory, path.basename(file, '.ts') + '.cjs'), output);
 }
 const { ellipseGeometry, eccentricAnomalyFromMean, orbitalPeriodSeconds, stateAtTime, stateAtTrueAnomaly } = require(path.join(tempDirectory, 'kepler.cjs'));
 const { ASTRONOMICAL_UNIT_M, SOLAR_MU_M3_S2, SECONDS_PER_JULIAN_YEAR } = require(path.join(tempDirectory, 'constants.cjs'));
+const { distanceTraveledBetweenTimes, sweptAreaBetweenTimes, thirdLawRatio } = require(path.join(tempDirectory, 'kepler.cjs'));
+const { PLANET_ORBIT_DATA } = require(path.join(tempDirectory, 'planetOrbitData.cjs'));
+const { PLANET_ECCENTRICITIES } = require(path.join(tempDirectory, 'planetEccentricities.cjs'));
 const close = (actual, expected, relativeTolerance = 1e-10) => assert.ok(Math.abs(actual - expected) / Math.abs(expected) < relativeTolerance, `${actual} is not within tolerance of ${expected}`);
 
 test('circle has equal radii and coincident foci', () => {
@@ -53,4 +60,43 @@ test('state returns to periapsis after one orbital period', () => {
   const orbit = { semiMajorAxisM: ASTRONOMICAL_UNIT_M, eccentricity: 0.2, gravitationalParameterM3S2: SOLAR_MU_M3_S2 };
   const period = orbitalPeriodSeconds(orbit);
   close(stateAtTime(orbit, period).radiusM, stateAtTime(orbit, 0).radiusM);
+});
+test('Cartesian state coordinates are consistent with the orbital radius', () => {
+  const orbit = { semiMajorAxisM: ASTRONOMICAL_UNIT_M, eccentricity: 0.4, gravitationalParameterM3S2: SOLAR_MU_M3_S2 };
+  const state = stateAtTime(orbit, orbitalPeriodSeconds(orbit) * 0.13);
+  close(Math.hypot(state.positionXM, state.positionYM), state.radiusM);
+});
+test('equal elapsed times sweep equal areas near perihelion and aphelion', () => {
+  const orbit = { semiMajorAxisM: ASTRONOMICAL_UNIT_M, eccentricity: 0.65, gravitationalParameterM3S2: SOLAR_MU_M3_S2 };
+  const period = orbitalPeriodSeconds(orbit);
+  const duration = period * 0.035;
+  const nearArea = sweptAreaBetweenTimes(orbit, 0, duration);
+  const farArea = sweptAreaBetweenTimes(orbit, period / 2 - duration / 2, period / 2 + duration / 2);
+  close(nearArea, farArea, 1e-13);
+});
+test('equal elapsed intervals travel farther near perihelion than aphelion', () => {
+  const orbit = { semiMajorAxisM: ASTRONOMICAL_UNIT_M, eccentricity: 0.65, gravitationalParameterM3S2: SOLAR_MU_M3_S2 };
+  const period = orbitalPeriodSeconds(orbit);
+  const duration = period * 0.035;
+  const nearDistance = distanceTraveledBetweenTimes(orbit, 0, duration, 128);
+  const farDistance = distanceTraveledBetweenTimes(orbit, period / 2 - duration / 2, period / 2 + duration / 2, 128);
+  assert.ok(nearDistance > farDistance * 2);
+});
+test('third-law ratio from the two-body period matches 4π²/μ', () => {
+  const orbit = { semiMajorAxisM: ASTRONOMICAL_UNIT_M, eccentricity: 0.3, gravitationalParameterM3S2: SOLAR_MU_M3_S2 };
+  const ratio = thirdLawRatio(orbitalPeriodSeconds(orbit), orbit.semiMajorAxisM);
+  close(ratio, (4 * Math.PI ** 2) / SOLAR_MU_M3_S2, 1e-12);
+});
+test('NASA planet data covers eight planets and shows P²/a³ near one in years and AU', () => {
+  assert.equal(PLANET_ORBIT_DATA.length, 8);
+  for (const planet of PLANET_ORBIT_DATA) {
+    const aAu = (planet.meanSunDistanceMillionKm * 1e6 * 1000) / ASTRONOMICAL_UNIT_M;
+    const periodYears = (planet.orbitalPeriodDays * 86_400) / SECONDS_PER_JULIAN_YEAR;
+    const ratio = periodYears ** 2 / aAu ** 3;
+    assert.ok(Math.abs(ratio - 1) < 0.04, `${planet.name}: P²/a³ = ${ratio}`);
+  }
+});
+test('first-lesson planet eccentricity data remains valid and complete', () => {
+  assert.equal(PLANET_ECCENTRICITIES.length, 8);
+  for (const planet of PLANET_ECCENTRICITIES) assert.ok(planet.eccentricity >= 0 && planet.eccentricity < 1);
 });
