@@ -44,6 +44,8 @@ function OrbitArt({ eccentricity, onSunGuess, submitted }: { eccentricity: numbe
     <circle cx={periX} cy={cy} r="5" fill="#ffc078" stroke="#111827" strokeWidth="2" />
     <circle cx={apoX} cy={cy} r="5" fill="#a6b8ff" stroke="#111827" strokeWidth="2" />
     <circle cx={cx} cy={cy} r="4.5" fill="#f4f6fb" stroke="#152035" strokeWidth="1.5" />
+    <text x={periX} y={Math.max(23, cy - b - 14)} textAnchor="middle" fontFamily="Noto Sans KR, sans-serif" fontSize="15" fontWeight="700" fill="#f0f3fa">근일점</text>
+    <text x={apoX} y={Math.max(23, cy - b - 14)} textAnchor="middle" fontFamily="Noto Sans KR, sans-serif" fontSize="15" fontWeight="700" fill="#f0f3fa">원일점</text>
 
     <g className={canGuess ? 'focus-choice' : ''} onClick={() => canGuess && onSunGuess?.('left')} role={canGuess ? 'button' : undefined} tabIndex={canGuess ? 0 : undefined} aria-label={canGuess ? '왼쪽 초점을 태양의 자리로 선택' : undefined} onKeyDown={(event) => { if (canGuess && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); onSunGuess?.('left'); } }}>
       <circle cx={sunX} cy={cy} r="14" fill="url(#sun-glow)" />
