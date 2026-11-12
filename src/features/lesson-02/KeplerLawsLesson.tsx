@@ -14,6 +14,8 @@ import {
 } from '../../physics';
 import './lesson-02.css';
 import LessonCompletion from '../../ui/LessonCompletion';
+import LessonStepNavigation from '../../ui/LessonStepNavigation';
+import { clearLessonStoredState, isBoolean, isIndexList, isIntegerBetween, isNumberBetween, isString, isStringRecord, useLessonStoredState } from '../../ui/lessonProgress';
 
 const DEMO_ECCENTRICITY = 0.62;
 const ORBIT_PERIOD_SECONDS = 60;
@@ -26,13 +28,6 @@ type PlanetPeriodAnswer = 'proportional' | 'nonlinear' | null;
 
 function Feedback({ correct, children }: { correct?: boolean; children: string }) {
   return <div className={`l2-feedback ${correct === undefined ? 'neutral' : correct ? 'correct' : 'retry'}`} role="status"><b>{correct === undefined ? '기록했어요' : correct ? '관찰이 잘 맞아요' : '다시 비교해 볼까요?'}</b><span>{children}</span></div>;
-}
-
-function StepProgress({ step }: { step: LessonStep }) {
-  const labels = ['예상하기', '면적 비교', '속도 비교', '행성 자료', '법칙 정리'];
-  return <div className="l2-progress" aria-label={`2차시 ${step + 1}단계, 전체 5단계`}>
-    {labels.map((label, index) => <div key={label} className={`${index === step ? 'current' : ''} ${index < step ? 'done' : ''}`}><span>{index < step ? '✓' : index + 1}</span><b>{label}</b></div>)}
-  </div>;
 }
 
 function formatDistance(meters: number): string {
@@ -100,9 +95,6 @@ function AreaComparisonFigure({ orbit, firstIndex, secondIndex, interval, firstA
     { index: firstIndex, name: firstIndex === 0 ? '근일점 부근' : firstIndex === 6 ? '원일점 부근' : `${firstIndex + 1}번 영역`, color: SECTOR_COLORS[firstIndex], area: firstAreaAU2 },
     { index: secondIndex, name: secondIndex === 0 ? '근일점 부근' : secondIndex === 6 ? '원일점 부근' : `${secondIndex + 1}번 영역`, color: SECTOR_COLORS[secondIndex], area: secondAreaAU2 },
   ];
-  useEffect(() => {
-    onComplete(false);
-  }, [firstIndex, secondIndex, onComplete]);
   useEffect(() => {
     if (!playing) return;
     const tick = (now: number) => {
@@ -452,23 +444,28 @@ function PlanetDataInvestigation({ selectedId, onSelect, periodAnswer, onPeriodA
 }
 
 export default function KeplerLawsLesson() {
-  const [step, setStep] = useState<LessonStep>(0);
-  const [prediction, setPrediction] = useState<string | null>(null);
-  const [areaAnswer, setAreaAnswer] = useState<AreaAnswer>(null);
-  const [areaComparisonComplete, setAreaComparisonComplete] = useState(false);
-  const [demoEccentricity, setDemoEccentricity] = useState(DEMO_ECCENTRICITY);
-  const [selectedSegments, setSelectedSegments] = useState<number[]>([]);
-  const [speedAnswer, setSpeedAnswer] = useState<SpeedAnswer>(null);
-  const [selectedPlanet, setSelectedPlanet] = useState('earth');
-  const [periodAnswer, setPeriodAnswer] = useState<PlanetPeriodAnswer>(null);
-  const [thirdAnswer, setThirdAnswer] = useState<string | null>(null);
-  const [summary, setSummary] = useState({ first: '', second: '', third: '' });
-  const [summarySubmitted, setSummarySubmitted] = useState(false);
-  const [notes, setNotes] = useState({ prediction: '', area: '', speed: '', third: '', summary: '' });
-  const [completed, setCompleted] = useState(false);
+  const [step, setStep] = useLessonStoredState<LessonStep>('2', 'step', 0, (value): value is LessonStep => isIntegerBetween(value, 0, 4));
+  const [highestStep, setHighestStep] = useLessonStoredState('2', 'highestStep', 0, (value): value is number => isIntegerBetween(value, 0, 4));
+  const [completedSteps, setCompletedSteps] = useLessonStoredState('2', 'completedSteps', [] as number[], (value): value is number[] => isIndexList(value, 4));
+  const [prediction, setPrediction] = useLessonStoredState<string | null>('2', 'prediction', null, (value): value is string | null => value === null || value === 'constant' || value === 'changes' || value === 'unsure');
+  const [areaAnswer, setAreaAnswer] = useLessonStoredState<AreaAnswer>('2', 'areaAnswer', null, (value): value is AreaAnswer => value === null || value === 'same' || value === 'different');
+  const [areaComparisonComplete, setAreaComparisonComplete] = useLessonStoredState('2', 'areaComparisonComplete', false, isBoolean);
+  const [demoEccentricity, setDemoEccentricity] = useLessonStoredState('2', 'demoEccentricity', DEMO_ECCENTRICITY, (value): value is number => isNumberBetween(value, 0, 0.8));
+  const [selectedSegments, setSelectedSegments] = useLessonStoredState('2', 'selectedSegments', [] as number[], (value): value is number[] => isIndexList(value, SECTOR_COUNT - 1) && value.length <= 2);
+  const [speedAnswer, setSpeedAnswer] = useLessonStoredState<SpeedAnswer>('2', 'speedAnswer', null, (value): value is SpeedAnswer => value === null || value === 'near-faster' || value === 'far-faster' || value === 'same');
+  const [selectedPlanet, setSelectedPlanet] = useLessonStoredState('2', 'selectedPlanet', 'earth', isString);
+  const [periodAnswer, setPeriodAnswer] = useLessonStoredState<PlanetPeriodAnswer>('2', 'periodAnswer', null, (value): value is PlanetPeriodAnswer => value === null || value === 'proportional' || value === 'nonlinear');
+  const [thirdAnswer, setThirdAnswer] = useLessonStoredState<string | null>('2', 'thirdAnswer', null, (value): value is string | null => value === null || typeof value === 'string');
+  const [summary, setSummary] = useLessonStoredState('2', 'summary', { first: '', second: '', third: '' }, isStringRecord(['first', 'second', 'third'] as const));
+  const [summarySubmitted, setSummarySubmitted] = useLessonStoredState('2', 'summarySubmitted', false, isBoolean);
+  const [notes, setNotes] = useLessonStoredState('2', 'notes', { prediction: '', area: '', speed: '', third: '', summary: '' }, isStringRecord(['prediction', 'area', 'speed', 'third', 'summary'] as const));
+  const [completed, setCompleted] = useLessonStoredState('2', 'completed', false, isBoolean);
   const [playing, setPlaying] = useState(false);
-  const [elapsedSeconds, setElapsedSeconds] = useState(0);
-  const [speedFactor, setSpeedFactor] = useState(1);
+  const [areaElapsedSeconds, setAreaElapsedSeconds] = useLessonStoredState('2', 'areaElapsedSeconds', 0, (value): value is number => isNumberBetween(value, 0, ORBIT_PERIOD_SECONDS));
+  const [speedElapsedSeconds, setSpeedElapsedSeconds] = useLessonStoredState('2', 'speedElapsedSeconds', 0, (value): value is number => isNumberBetween(value, 0, ORBIT_PERIOD_SECONDS / SECTOR_COUNT));
+  const [speedFactor, setSpeedFactor] = useLessonStoredState('2', 'speedFactor', 1, (value): value is number => value === 0.25 || value === 0.5 || value === 1 || value === 2 || value === 4);
+  const elapsedSeconds = step === 2 ? speedElapsedSeconds : areaElapsedSeconds;
+  const setElapsedSeconds = step === 2 ? setSpeedElapsedSeconds : setAreaElapsedSeconds;
   const elapsedRef = useRef(elapsedSeconds);
   elapsedRef.current = elapsedSeconds;
 
@@ -509,7 +506,10 @@ export default function KeplerLawsLesson() {
 
   function restart() {
     if (!window.confirm('2차시를 처음부터 다시 시작할까요? 지금까지의 답변과 관찰 기록이 모두 지워집니다.')) return;
+    clearLessonStoredState('2');
     setStep(0);
+    setHighestStep(0);
+    setCompletedSteps([]);
     setPrediction(null);
     setAreaAnswer(null);
     setAreaComparisonComplete(false);
@@ -524,8 +524,33 @@ export default function KeplerLawsLesson() {
     setNotes({ prediction: '', area: '', speed: '', third: '', summary: '' });
     setCompleted(false);
     setPlaying(false);
-    setElapsedSeconds(0);
+    setAreaElapsedSeconds(0);
+    setSpeedElapsedSeconds(0);
     setSpeedFactor(1);
+  }
+
+  function navigateTo(next: number) {
+    if (next > Math.max(highestStep, step)) return;
+    setPlaying(false);
+    setStep(next as LessonStep);
+    setCompleted(false);
+  }
+
+  function advanceTo(next: LessonStep) {
+    const firstVisit = next > Math.max(highestStep, step);
+    setCompletedSteps((current) => current.includes(step) ? current : [...current, step]);
+    setHighestStep((current) => Math.max(current, next));
+    setStep(next);
+    setCompleted(false);
+    setPlaying(false);
+    if (firstVisit && next === 2) setSpeedElapsedSeconds(0);
+  }
+
+  function finishLesson() {
+    setCompletedSteps((current) => current.includes(step) ? current : [...current, step]);
+    setHighestStep(4);
+    setCompleted(true);
+    setPlaying(false);
   }
 
   return <main className="lesson-main l2-main">
@@ -534,18 +559,17 @@ export default function KeplerLawsLesson() {
       <h1>행성의 속도와 공전주기에는 어떤 규칙이 있을까?</h1>
       <p>행성의 움직임과 태양계 자료를 관찰해, 면적과 속도 그리고 공전주기에서 규칙을 찾아봅니다.</p>
       <div className="learning-objective"><b>오늘의 목표</b><span>같은 시간 동안 쓸린 면적이 같음을 발견하고, 공전주기와 궤도 긴반지름의 관계를 분석합니다.</span></div>
-      <div className="l2-time-plan" aria-label="수업 활동 시간">도입 5분 <i/> 면적 비교 15분 <i/> 속도 비교 10분 <i/> 행성 자료 15분 <i/> 정리 5분</div>
     </section>
 
     <section className="l2-layout">
       <div className="l2-content">
-        <StepProgress step={step}/>
-        {(step === 1 || step === 2) && <AreaSimulation orbit={orbit} eccentricity={demoEccentricity} onEccentricityChange={(value) => { setDemoEccentricity(value); setPlaying(false); setElapsedSeconds(0); setSelectedSegments([]); setAreaAnswer(null); setAreaComparisonComplete(false); setSpeedAnswer(null); }} playing={playing} setPlaying={setPlaying} elapsedSeconds={elapsedSeconds} setElapsedSeconds={setElapsedSeconds} speedFactor={speedFactor} setSpeedFactor={setSpeedFactor} selectedSegments={selectedSegments} onToggleSegment={(index) => { setSelectedSegments((current) => current.includes(index) ? current.filter((item) => item !== index) : current.length < 2 ? [...current, index] : [current[1], index]); setAreaAnswer(null); setAreaComparisonComplete(false); }} onReset={() => { setPlaying(false); setElapsedSeconds(0); setSelectedSegments([]); setAreaAnswer(null); setAreaComparisonComplete(false); setSpeedAnswer(null); }} onComparisonComplete={setAreaComparisonComplete} revealAreaResult={step === 1 && areaAnswer !== null && selectedSegments.length === 2} revealSpeedResult={step === 2 && speedAnswer !== null} stage={step === 1 ? 'area' : 'speed'}/ >}
-        {step === 0 && <section className="l2-activity"><div className="l2-heading"><span>도입 · 5분</span><h2>행성의 속도는 늘 같을까요?</h2></div><p><b>목표</b> 관찰을 시작하기 전에 자신의 예상을 남깁니다.</p><p>행성은 태양 주위를 공전할 때 항상 일정한 속도로 움직일까요? 태양에서의 거리에 따라 어떻게 달라질지 생각해 보세요.</p><fieldset className="l2-options"><legend>나의 예상</legend><label><input type="radio" name="prediction" checked={prediction === 'constant'} onChange={() => setPrediction('constant')}/> 공전하는 동안 속도는 거의 일정할 것 같다</label><label><input type="radio" name="prediction" checked={prediction === 'changes'} onChange={() => setPrediction('changes')}/> 태양과의 거리에 따라 달라질 것 같다</label><label><input type="radio" name="prediction" checked={prediction === 'unsure'} onChange={() => setPrediction('unsure')}/> 아직 잘 모르겠다</label></fieldset>{prediction && <Feedback>예상을 기록했습니다. 시뮬레이션을 관찰한 뒤 자신의 생각을 비교해 보세요.</Feedback>}<label className="l2-reflection">예상한 까닭<textarea rows={2} value={notes.prediction} onChange={(event) => setNotes({ ...notes, prediction: event.target.value })} placeholder="지금 떠오르는 생각을 짧게 적어 보세요."/></label><button className="l2-next" disabled={!prediction} onClick={() => setStep(1)}>면적 비교 시작 <span>→</span></button></section>}
-        {step === 1 && <AreaInvestigation answer={areaAnswer} onAnswer={setAreaAnswer} pairReady={selectedSegments.length === 2} comparisonComplete={areaComparisonComplete} note={notes.area} onNoteChange={(value) => setNotes({ ...notes, area: value })} onNext={() => { setPlaying(false); setElapsedSeconds(0); elapsedRef.current = 0; setSpeedAnswer(null); setStep(2); }}/ >}
-        {step === 2 && <SpeedInvestigation eccentricity={demoEccentricity} durationDays={comparisonDays} periInstant={periVelocity} apoInstant={apoVelocity} periDistance={periDistance} apoDistance={apoDistance} periAverage={periAverageSpeed} apoAverage={apoAverageSpeed} comparisonComplete={elapsedSeconds >= ORBIT_PERIOD_SECONDS / SECTOR_COUNT} answer={speedAnswer} onAnswer={setSpeedAnswer} note={notes.speed} onNoteChange={(value) => setNotes({ ...notes, speed: value })} onNext={() => setStep(3)}/>}
-        {step === 3 && <PlanetDataInvestigation selectedId={selectedPlanet} onSelect={setSelectedPlanet} periodAnswer={periodAnswer} onPeriodAnswer={setPeriodAnswer} ratioAnswer={thirdAnswer} onRatioAnswer={setThirdAnswer} note={notes.third} onNoteChange={(value) => setNotes({ ...notes, third: value })} onNext={() => setStep(4)}/>}
-        {step === 4 && !completed && <section className="l2-activity"><div className="l2-heading"><span>정리 · 5분</span><h2>관찰한 내용을 법칙에 연결해요</h2></div><p><b>목표</b> 케플러 세 법칙이 행성 운동의 어떤 특징을 설명하는지 구분합니다.</p><div className="l2-match-list"><label>행성 궤도는 타원이며 태양은 한 초점에 있다<select value={summary.first} onChange={(event) => setSummary({ ...summary, first: event.target.value })}><option value="">법칙 선택</option><option value="1">제1법칙</option><option value="2">제2법칙</option><option value="3">제3법칙</option></select></label><label>같은 시간 동안 태양-행성 선분이 같은 면적을 쓸고 간다<select value={summary.second} onChange={(event) => setSummary({ ...summary, second: event.target.value })}><option value="">법칙 선택</option><option value="1">제1법칙</option><option value="2">제2법칙</option><option value="3">제3법칙</option></select></label><label>공전주기의 제곱은 긴반지름의 세제곱에 비례한다<select value={summary.third} onChange={(event) => setSummary({ ...summary, third: event.target.value })}><option value="">법칙 선택</option><option value="1">제1법칙</option><option value="2">제2법칙</option><option value="3">제3법칙</option></select></label></div><button className="l2-check" disabled={!summary.first || !summary.second || !summary.third} onClick={() => setSummarySubmitted(true)}>정리 확인</button>{summarySubmitted && <Feedback correct={summary.first === '1' && summary.second === '2' && summary.third === '3'}>{summary.first === '1' && summary.second === '2' && summary.third === '3' ? '세 법칙을 모두 알맞게 연결했어요. 다음 차시에는 이 원리를 이용해 지구에서 화성으로 가는 이상적인 탐사선 궤도를 살펴봅니다.' : '각 문장에서 궤도의 모양, 같은 시간의 면적, 주기와 크기 중 무엇을 설명하는지 다시 생각해 보세요.'}</Feedback>}<label className="l2-reflection">오늘의 한 줄 정리<textarea rows={2} value={notes.summary} onChange={(event) => setNotes({ ...notes, summary: event.target.value })} placeholder="제2법칙과 제3법칙을 한 문장씩 정리해 보세요."/></label><button className="l2-next" disabled={!summarySubmitted || summary.first !== '1' || summary.second !== '2' || summary.third !== '3'} onClick={() => setCompleted(true)}>2차시 완료 <span>✓</span></button></section>}
+        <LessonStepNavigation lessonLabel="2차시" steps={['예상하기', '면적 비교', '속도 비교', '행성 자료', '법칙 정리'].map((label) => ({ label }))} currentStep={step} highestStep={completed ? 4 : highestStep} completedSteps={completedSteps} onNavigate={navigateTo}/>
+        {(step === 1 || step === 2) && <AreaSimulation orbit={orbit} eccentricity={demoEccentricity} onEccentricityChange={(value) => { setDemoEccentricity(value); setPlaying(false); setAreaElapsedSeconds(0); setSpeedElapsedSeconds(0); setAreaComparisonComplete(false); }} playing={playing} setPlaying={setPlaying} elapsedSeconds={elapsedSeconds} setElapsedSeconds={setElapsedSeconds} speedFactor={speedFactor} setSpeedFactor={setSpeedFactor} selectedSegments={selectedSegments} onToggleSegment={(index) => { setSelectedSegments((current) => current.includes(index) ? current.filter((item) => item !== index) : current.length < 2 ? [...current, index] : [current[1], index]); setAreaComparisonComplete(false); }} onReset={() => { setPlaying(false); setElapsedSeconds(0); }} onComparisonComplete={setAreaComparisonComplete} revealAreaResult={step === 1 && areaAnswer !== null && selectedSegments.length === 2} revealSpeedResult={step === 2 && speedAnswer !== null} stage={step === 1 ? 'area' : 'speed'}/ >}
+        {step === 0 && <section className="l2-activity"><div className="l2-heading"><span>도입 · 5분</span><h2>행성의 속도는 늘 같을까요?</h2></div><p><b>목표</b> 관찰을 시작하기 전에 자신의 예상을 남깁니다.</p><p>행성은 태양 주위를 공전할 때 항상 일정한 속도로 움직일까요? 태양에서의 거리에 따라 어떻게 달라질지 생각해 보세요.</p><fieldset className="l2-options"><legend>나의 예상</legend><label><input type="radio" name="prediction" checked={prediction === 'constant'} onChange={() => setPrediction('constant')}/> 공전하는 동안 속도는 거의 일정할 것 같다</label><label><input type="radio" name="prediction" checked={prediction === 'changes'} onChange={() => setPrediction('changes')}/> 태양과의 거리에 따라 달라질 것 같다</label><label><input type="radio" name="prediction" checked={prediction === 'unsure'} onChange={() => setPrediction('unsure')}/> 아직 잘 모르겠다</label></fieldset>{prediction && <Feedback>예상을 기록했습니다. 시뮬레이션을 관찰한 뒤 자신의 생각을 비교해 보세요.</Feedback>}<label className="l2-reflection">예상한 까닭<textarea rows={2} value={notes.prediction} onChange={(event) => setNotes({ ...notes, prediction: event.target.value })} placeholder="지금 떠오르는 생각을 짧게 적어 보세요."/></label><button className="l2-next" disabled={!prediction} onClick={() => advanceTo(1)}>면적 비교 시작 <span>→</span></button></section>}
+        {step === 1 && <AreaInvestigation answer={areaAnswer} onAnswer={setAreaAnswer} pairReady={selectedSegments.length === 2} comparisonComplete={areaComparisonComplete} note={notes.area} onNoteChange={(value) => setNotes({ ...notes, area: value })} onNext={() => advanceTo(2)}/ >}
+        {step === 2 && <SpeedInvestigation eccentricity={demoEccentricity} durationDays={comparisonDays} periInstant={periVelocity} apoInstant={apoVelocity} periDistance={periDistance} apoDistance={apoDistance} periAverage={periAverageSpeed} apoAverage={apoAverageSpeed} comparisonComplete={elapsedSeconds >= ORBIT_PERIOD_SECONDS / SECTOR_COUNT} answer={speedAnswer} onAnswer={setSpeedAnswer} note={notes.speed} onNoteChange={(value) => setNotes({ ...notes, speed: value })} onNext={() => advanceTo(3)}/>}
+        {step === 3 && <PlanetDataInvestigation selectedId={selectedPlanet} onSelect={setSelectedPlanet} periodAnswer={periodAnswer} onPeriodAnswer={setPeriodAnswer} ratioAnswer={thirdAnswer} onRatioAnswer={setThirdAnswer} note={notes.third} onNoteChange={(value) => setNotes({ ...notes, third: value })} onNext={() => advanceTo(4)}/>}
+        {step === 4 && !completed && <section className="l2-activity"><div className="l2-heading"><span>정리 · 5분</span><h2>관찰한 내용을 법칙에 연결해요</h2></div><p><b>목표</b> 케플러 세 법칙이 행성 운동의 어떤 특징을 설명하는지 구분합니다.</p><div className="l2-match-list"><label>행성 궤도는 타원이며 태양은 한 초점에 있다<select value={summary.first} onChange={(event) => setSummary({ ...summary, first: event.target.value })}><option value="">법칙 선택</option><option value="1">제1법칙</option><option value="2">제2법칙</option><option value="3">제3법칙</option></select></label><label>같은 시간 동안 태양-행성 선분이 같은 면적을 쓸고 간다<select value={summary.second} onChange={(event) => setSummary({ ...summary, second: event.target.value })}><option value="">법칙 선택</option><option value="1">제1법칙</option><option value="2">제2법칙</option><option value="3">제3법칙</option></select></label><label>공전주기의 제곱은 긴반지름의 세제곱에 비례한다<select value={summary.third} onChange={(event) => setSummary({ ...summary, third: event.target.value })}><option value="">법칙 선택</option><option value="1">제1법칙</option><option value="2">제2법칙</option><option value="3">제3법칙</option></select></label></div><button className="l2-check" disabled={!summary.first || !summary.second || !summary.third} onClick={() => setSummarySubmitted(true)}>정리 확인</button>{summarySubmitted && <Feedback correct={summary.first === '1' && summary.second === '2' && summary.third === '3'}>{summary.first === '1' && summary.second === '2' && summary.third === '3' ? '세 법칙을 모두 알맞게 연결했어요. 다음 차시에는 이 원리를 이용해 지구에서 화성으로 가는 이상적인 탐사선 궤도를 살펴봅니다.' : '각 문장에서 궤도의 모양, 같은 시간의 면적, 주기와 크기 중 무엇을 설명하는지 다시 생각해 보세요.'}</Feedback>}<label className="l2-reflection">오늘의 한 줄 정리<textarea rows={2} value={notes.summary} onChange={(event) => setNotes({ ...notes, summary: event.target.value })} placeholder="제2법칙과 제3법칙을 한 문장씩 정리해 보세요."/></label><button className="l2-next" disabled={!summarySubmitted || summary.first !== '1' || summary.second !== '2' || summary.third !== '3'} onClick={finishLesson}>2차시 완료 <span>✓</span></button></section>}
         {completed && <LessonCompletion title="2차시 탐구를 마쳤어요" introduction="같은 시간 동안의 면적과 행성 자료를 통해 케플러 제2·3법칙을 확인했습니다." summaryTitle="오늘의 핵심" summary="제2법칙: 같은 시간 동안 같은 면적을 쓸고 지나갑니다. 제3법칙: P²은 a³에 비례합니다." detail="태양에 가까운 구간에서는 같은 시간 동안 더 긴 궤도 거리를 이동합니다." nextLesson="다음 시간에는 케플러 법칙을 활용해 지구에서 화성으로 향하는 탐사선의 전이 궤도를 탐구합니다." onRestart={restart}/>}
       </div>
       <aside className="l2-side"><div className="l2-model-note"><b>모델 안내</b><p>애니메이션은 태양의 중력만 고려한 두 천체 타원 궤도입니다. 이심률은 차이를 보기 위한 교육용 예시이며 특정 행성의 궤도가 아닙니다.</p></div>{!completed && <button onClick={restart}>처음부터 다시하기</button>}</aside>

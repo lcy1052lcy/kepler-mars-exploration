@@ -4,6 +4,8 @@ import { PLANET_ECCENTRICITIES, PLANET_ECCENTRICITY_SOURCE } from '../content/pl
 import { ASTRONOMICAL_UNIT_M, ellipseGeometry } from '../physics';
 import KeplerLawsLesson from '../features/lesson-02/KeplerLawsLesson';
 import LessonCompletion from './LessonCompletion';
+import LessonStepNavigation from './LessonStepNavigation';
+import { clearLessonStoredState, isBoolean, isIndexList, isIntegerBetween, isNumberBetween, isString, useLessonStoredState } from './lessonProgress';
 
 type Step = 0 | 1 | 2 | 3;
 
@@ -65,21 +67,23 @@ function Feedback({ correct, children }: { correct: boolean; children: string })
 }
 
 export default function App() {
-  const [selectedLesson, setSelectedLesson] = useState(1);
-  const [step, setStep] = useState<Step>(0);
-  const [eccentricity, setEccentricity] = useState(0.35);
-  const [mode, setMode] = useState<'concept' | 'planet'>('concept');
-  const [selectedPlanet, setSelectedPlanet] = useState('earth');
-  const [answer1, setAnswer1] = useState<string | null>(null);
-  const [answer2, setAnswer2] = useState<'center' | 'left' | 'right' | 'orbit' | null>(null);
-  const [answer3, setAnswer3] = useState<string | null>(null);
-  const [explanation, setExplanation] = useState('');
-  const [finalExplanation, setFinalExplanation] = useState('');
-  const [reflection1, setReflection1] = useState('');
-  const [reflection2, setReflection2] = useState('');
-  const [reflection3, setReflection3] = useState('');
-  const [focusAttempted, setFocusAttempted] = useState(false);
-  const [completed, setCompleted] = useState(false);
+  const [selectedLesson, setSelectedLesson] = useLessonStoredState('app', 'selectedLesson', 1, (value): value is number => isIntegerBetween(value, 1, 4));
+  const [step, setStep] = useLessonStoredState<Step>('1', 'step', 0, (value): value is Step => isIntegerBetween(value, 0, 3));
+  const [highestStep, setHighestStep] = useLessonStoredState('1', 'highestStep', 0, (value): value is number => isIntegerBetween(value, 0, 3));
+  const [completedSteps, setCompletedSteps] = useLessonStoredState('1', 'completedSteps', [] as number[], (value): value is number[] => isIndexList(value, 3));
+  const [eccentricity, setEccentricity] = useLessonStoredState('1', 'eccentricity', 0.35, (value): value is number => isNumberBetween(value, 0, 0.8));
+  const [mode, setMode] = useLessonStoredState<'concept' | 'planet'>('1', 'mode', 'concept', (value): value is 'concept' | 'planet' => value === 'concept' || value === 'planet');
+  const [selectedPlanet, setSelectedPlanet] = useLessonStoredState('1', 'selectedPlanet', 'earth', (value): value is string => typeof value === 'string' && PLANET_ECCENTRICITIES.some((planet) => planet.id === value));
+  const [answer1, setAnswer1] = useLessonStoredState<string | null>('1', 'answer1', null, (value): value is string | null => value === null || value === 'circle' || value === 'ellipse');
+  const [answer2, setAnswer2] = useLessonStoredState<'center' | 'left' | 'right' | 'orbit' | null>('1', 'answer2', null, (value): value is 'center' | 'left' | 'right' | 'orbit' | null => value === null || value === 'center' || value === 'left' || value === 'right' || value === 'orbit');
+  const [answer3, setAnswer3] = useLessonStoredState<string | null>('1', 'answer3', null, (value): value is string | null => value === null || (typeof value === 'string' && PLANET_ECCENTRICITIES.some((planet) => planet.id === value)));
+  const [explanation, setExplanation] = useLessonStoredState('1', 'explanation', '', isString);
+  const [finalExplanation, setFinalExplanation] = useLessonStoredState('1', 'finalExplanation', '', isString);
+  const [reflection1, setReflection1] = useLessonStoredState('1', 'reflection1', '', isString);
+  const [reflection2, setReflection2] = useLessonStoredState('1', 'reflection2', '', isString);
+  const [reflection3, setReflection3] = useLessonStoredState('1', 'reflection3', '', isString);
+  const [focusAttempted, setFocusAttempted] = useLessonStoredState('1', 'focusAttempted', false, isBoolean);
+  const [completed, setCompleted] = useLessonStoredState('1', 'completed', false, isBoolean);
   const [orbitInfo, setOrbitInfo] = useState<OrbitInfoKey | null>(null);
 
   const activePlanet = PLANET_ECCENTRICITIES.find((planet) => planet.id === selectedPlanet)!;
@@ -92,20 +96,21 @@ export default function App() {
   const selectedOrbitInfo = orbitInfo ? ORBIT_DETAILS[orbitInfo] : null;
 
   function goNext() {
-    if (step < 3) enterStep((step + 1) as Step);
-    else setCompleted(true);
+    if (step < 3) advanceTo((step + 1) as Step);
+    else finishLesson();
   }
 
   function chooseFocus(guess: 'center' | 'left' | 'right' | 'orbit') {
-    if (answer2 === null) {
-      setAnswer2(guess);
-      setFocusAttempted(true);
-    }
+    setAnswer2(guess);
+    setFocusAttempted(true);
   }
 
   function restartFromBeginning() {
     if (!window.confirm('처음부터 다시 시작할까요? 지금까지의 답변과 관찰 기록이 모두 지워집니다.')) return;
+    clearLessonStoredState('1');
     setStep(0);
+    setHighestStep(0);
+    setCompletedSteps([]);
     setEccentricity(0.35);
     setMode('concept');
     setSelectedPlanet('earth');
@@ -123,15 +128,30 @@ export default function App() {
     setOrbitInfo(null);
   }
 
-  function enterStep(next: Step) {
+  function navigateTo(next: number) {
+    if (next > Math.max(highestStep, step)) return;
+    setStep(next as Step);
+    setCompleted(false);
+    setOrbitInfo(null);
+  }
+
+  function advanceTo(next: Step) {
+    const firstVisit = next > Math.max(highestStep, step);
+    setCompletedSteps((current) => current.includes(step) ? current : [...current, step]);
+    setHighestStep((current) => Math.max(current, next));
     setStep(next);
-    if (next === 1) {
+    setCompleted(false);
+    if (firstVisit && next === 1) {
       setMode('concept');
       setEccentricity(0.5);
-      setAnswer2(null);
-      setFocusAttempted(false);
     }
-    if (next === 2) setMode('planet');
+    if (firstVisit && next === 2) setMode('planet');
+  }
+
+  function finishLesson() {
+    setCompletedSteps((current) => current.includes(step) ? current : [...current, step]);
+    setHighestStep(3);
+    setCompleted(true);
   }
 
   return <div className="learning-app" id="top">
@@ -150,9 +170,7 @@ export default function App() {
 
       <section className="investigation-layout" aria-label="케플러 제1법칙 단계별 탐구">
         <div className="exploration-column">
-          <div className="step-progress" aria-label={`탐구 ${step + 1}단계, 전체 4단계`}>
-            {['모양 살펴보기', '태양의 위치 찾기', '행성 비교하기', '정리하기'].map((label, index) => <div key={label} className={`${index === step ? 'current' : ''} ${index < step || completed ? 'done' : ''}`}><span>{index < step || completed ? '✓' : index + 1}</span><b>{label}</b></div>)}
-          </div>
+          <LessonStepNavigation lessonLabel="1차시" steps={['모양 살펴보기', '태양의 위치 찾기', '행성 비교하기', '정리하기'].map((label) => ({ label }))} currentStep={step} highestStep={completed ? 3 : highestStep} completedSteps={completedSteps} onNavigate={navigateTo}/>
           <section className="orbit-panel" aria-label="궤도 시뮬레이션">
             <div className="orbit-panel-heading"><div><span>궤도 관찰</span><b>{mode === 'concept' ? '개념 학습' : `${activePlanet.name} · 실제 이심률 ${activeEccentricity.toFixed(4)}`}</b></div></div>
             <OrbitArt eccentricity={activeEccentricity} onSunGuess={step === 1 ? chooseFocus : undefined} submitted={answer2 !== null} />
@@ -168,7 +186,7 @@ export default function App() {
             <div className="orbit-data" aria-live="polite"><div><span>근일점 거리</span><b>{(orbit.periapsisDistance / ASTRONOMICAL_UNIT_M).toFixed(3)} <small>AU</small></b></div><div><span>원일점 거리</span><b>{(orbit.apoapsisDistance / ASTRONOMICAL_UNIT_M).toFixed(3)} <small>AU</small></b></div><div><span>이심률</span><b>{activeEccentricity.toFixed(mode === 'concept' ? 2 : 4)}</b></div></div>
             {mode === 'planet' && <p className="comparison-distance-note">행성 모드의 긴반지름을 1 AU로 맞춰 계산한 비교용 거리입니다. 실제 행성의 태양 거리와 다릅니다.</p>}
             <div className="orbit-controls">
-              {mode === 'concept' ? <div className="slider-control"><label htmlFor="eccentricity">이심률 <strong>{eccentricity.toFixed(2)}</strong></label><input id="eccentricity" aria-label="개념 학습 이심률" type="range" min="0" max="0.8" step="0.01" value={eccentricity} onChange={(event) => { setEccentricity(Number(event.target.value)); setAnswer1(null); }} /><div className="range-labels"><span>원에 가까움</span><span>길쭉한 타원</span></div></div> : <div className="planet-control"><span>행성을 선택해 이심률을 비교하세요</span><div>{PLANET_ECCENTRICITIES.map((planet) => <button key={planet.id} className={selectedPlanet === planet.id ? 'selected' : ''} aria-pressed={selectedPlanet === planet.id} onClick={() => setSelectedPlanet(planet.id)}>{planet.name}</button>)}</div></div>}
+              {mode === 'concept' ? <div className="slider-control"><label htmlFor="eccentricity">이심률 <strong>{eccentricity.toFixed(2)}</strong></label><input id="eccentricity" aria-label="개념 학습 이심률" type="range" min="0" max="0.8" step="0.01" value={eccentricity} onChange={(event) => setEccentricity(Number(event.target.value))} /><div className="range-labels"><span>원에 가까움</span><span>길쭉한 타원</span></div></div> : <div className="planet-control"><span>행성을 선택해 이심률을 비교하세요</span><div>{PLANET_ECCENTRICITIES.map((planet) => <button key={planet.id} className={selectedPlanet === planet.id ? 'selected' : ''} aria-pressed={selectedPlanet === planet.id} onClick={() => setSelectedPlanet(planet.id)}>{planet.name}</button>)}</div></div>}
             </div>
             {mode === 'planet' && <p className="scale-note">모양을 비교하려고 화면의 긴반지름 길이를 같게 맞췄습니다. 실제 궤도 크기는 행성마다 다릅니다. <a href={PLANET_ECCENTRICITY_SOURCE.url} target="_blank" rel="noreferrer">자료: NASA Goddard Planetary Fact Sheet</a></p>}
           </section>
@@ -188,11 +206,11 @@ export default function App() {
               <p className="activity-goal"><b>목표</b> 타원의 중심과 두 초점을 관찰해 태양의 위치를 찾아봅니다.</p>
               <p className="activity-instruction">이심률 0.50에서 중심(가운데 점)과 양쪽 초점의 간격을 살펴보세요. 그림 속 점이나 아래 선택지를 누르세요. 응답 후 이심률을 낮춰 중심과 초점이 가까워지는 모습도 관찰할 수 있습니다.</p>
               <div className="interaction-hint">태양은 타원의 중심, 한 초점, 궤도 위 중 어디에 있나요?</div>
-              {answer2 === null && <div className="position-options"><button onClick={() => chooseFocus('center')}>타원의 중심</button><button onClick={() => chooseFocus('left')}>한 초점</button><button onClick={() => chooseFocus('orbit')}>궤도 위</button></div>}
-              {answer2 !== null && <Feedback correct={answer2 === 'left'}>{answer2 === 'left' ? '맞아요. 케플러 제1법칙은 행성의 궤도가 타원이고 태양은 두 초점 중 하나에 있다고 설명합니다. 이심률을 낮추면 두 초점이 중심 쪽으로 가까워집니다.' : '태양은 타원의 중심이나 궤도 위가 아니라 두 초점 중 한 곳에 있습니다. 케플러 제1법칙과 연결해 다시 살펴보세요.'}</Feedback>}
+              <div className="position-options" role="group" aria-label="태양의 위치 선택"><button className={answer2 === 'center' ? 'selected' : ''} aria-pressed={answer2 === 'center'} onClick={() => chooseFocus('center')}>타원의 중심</button><button className={answer2 === 'left' || answer2 === 'right' ? 'selected' : ''} aria-pressed={answer2 === 'left' || answer2 === 'right'} onClick={() => chooseFocus('left')}>한 초점</button><button className={answer2 === 'orbit' ? 'selected' : ''} aria-pressed={answer2 === 'orbit'} onClick={() => chooseFocus('orbit')}>궤도 위</button></div>
+              {answer2 !== null && <Feedback correct={answer2 === 'left' || answer2 === 'right'}>{answer2 === 'left' || answer2 === 'right' ? '맞아요. 케플러 제1법칙은 행성의 궤도가 타원이고 태양은 두 초점 중 하나에 있다고 설명합니다. 이심률을 낮추면 두 초점이 중심 쪽으로 가까워집니다.' : '태양은 타원의 중심이나 궤도 위가 아니라 두 초점 중 한 곳에 있습니다. 케플러 제1법칙과 연결해 다시 살펴보세요.'}</Feedback>}
               {focusAttempted && <div className="lower-eccentricity"><label htmlFor="focus-eccentricity">이심률을 낮춰 초점 간격 관찰 <b>{eccentricity.toFixed(2)}</b></label><input id="focus-eccentricity" type="range" min="0" max="0.5" step="0.01" value={eccentricity} onChange={(event) => setEccentricity(Number(event.target.value))}/></div>}
               <label className="reflection-field">관찰 기록 <textarea value={reflection2} onChange={(event) => setReflection2(event.target.value)} placeholder="중심과 초점은 어떻게 다른 위치인가요?" rows={2}/></label>
-              <button className="next-step" disabled={answer2 === null} onClick={() => enterStep(2)}>다음 탐구 <span>→</span></button>
+              <button className="next-step" disabled={answer2 === null} onClick={() => advanceTo(2)}>다음 탐구 <span>→</span></button>
             </>}
             {!completed && step === 2 && <>
               <div className="activity-heading"><span>탐구 3</span><h2>실제 행성의 궤도</h2></div>
@@ -210,7 +228,7 @@ export default function App() {
               <div className="law-summary"><span>케플러 제1법칙</span><p>행성의 궤도는 타원이며, <b>태양은 타원의 두 초점 중 한 곳</b>에 위치합니다.</p><small>이심률이 0이면 두 초점이 중심에서 겹치는 원이 됩니다. 이 경우도 타원의 특수한 경우로 볼 수 있습니다.</small></div>
               <p className="summary-prompt">이 법칙을 자신의 말로 한 문장 설명한 뒤 완료를 누르세요.</p>
               <label className="reflection-field">나의 설명 <textarea value={finalExplanation} onChange={(event) => setFinalExplanation(event.target.value)} placeholder="행성의 궤도와 태양의 위치를 함께 설명해 보세요." rows={3}/></label>
-              <button className="next-step" disabled={finalExplanation.trim().length < 8} onClick={() => setCompleted(true)}>탐구 완료 <span>✓</span></button>
+              <button className="next-step" disabled={finalExplanation.trim().length < 8} onClick={finishLesson}>탐구 완료 <span>✓</span></button>
             </>}
             {completed && <LessonCompletion title="1차시 탐구를 마쳤어요" introduction="이심률에 따른 궤도 모양을 살펴보고, 태양이 타원의 한 초점에 있음을 확인했습니다." summaryTitle="케플러 제1법칙" summary="행성의 궤도는 타원이며, 태양은 타원의 한 초점에 있습니다." detail="이심률이 0이면 두 초점은 중심에서 겹치며, 원은 타원의 한 경우입니다." nextLesson="다음 시간에는 행성이 태양 주위를 공전할 때 속력이 어떻게 달라지는지, 공전주기에는 어떤 규칙이 있는지 탐구합니다." onRestart={restartFromBeginning}/>}
           </section>
