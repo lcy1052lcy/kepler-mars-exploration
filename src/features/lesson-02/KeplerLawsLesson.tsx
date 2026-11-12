@@ -225,7 +225,7 @@ function AreaInvestigation({ answer, onAnswer, pairReady, comparisonComplete, no
   </section>;
 }
 
-function SpeedInvestigation({ eccentricity, durationDays, periInstant, apoInstant, periDistance, apoDistance, periAverage, apoAverage, answer, onAnswer, note, onNoteChange, onNext }: {
+function SpeedInvestigation({ eccentricity, durationDays, periInstant, apoInstant, periDistance, apoDistance, periAverage, apoAverage, comparisonComplete, answer, onAnswer, note, onNoteChange, onNext }: {
   eccentricity: number;
   durationDays: number;
   periInstant: number;
@@ -234,6 +234,7 @@ function SpeedInvestigation({ eccentricity, durationDays, periInstant, apoInstan
   apoDistance: number;
   periAverage: number;
   apoAverage: number;
+  comparisonComplete: boolean;
   answer: SpeedAnswer;
   onAnswer: (answer: Exclude<SpeedAnswer, null>) => void;
   note: string;
@@ -243,9 +244,10 @@ function SpeedInvestigation({ eccentricity, durationDays, periInstant, apoInstan
   const maxDistance = Math.max(periDistance, apoDistance);
   return <section className="l2-activity">
     <div className="l2-heading"><span>전개 2 · 10분</span><h2>어디에서 더 빠르게 움직일까요?</h2></div>
-    <p><b>관찰</b> 전개 1과 같은 궤도(이심률 {eccentricity.toFixed(2)})와 1번·7번 구간입니다. 궤도 위 청록색·주황색 선의 길이를 먼저 비교하세요.</p>
-    <div className="l2-speed-method"><b>비교 조건</b><span>두 구간의 이동 시간은 같습니다. 약 {Math.round(durationDays)}일입니다.</span></div>
-    <fieldset className="l2-options"><legend>같은 시간 동안 더 긴 거리를 이동하는 곳은 어디일까요?</legend>
+    <p><b>관찰</b> 전개 1과 같은 궤도(이심률 {eccentricity.toFixed(2)})를 사용합니다. 태양에서의 거리와 궤도 위에서 움직인 거리를 구분하며, 청록색·주황색 행성이 같은 시간 동안 이동하는 모습을 먼저 보세요.</p>
+    <div className="l2-speed-method"><b>비교 조건</b><span>두 행성은 각각 근일점·원일점 부근에서 동시에 출발해 같은 약 {Math.round(durationDays)}일 동안 움직입니다. 두꺼운 곡선은 타원 궤도 위의 이동 경로입니다.</span></div>
+    {!comparisonComplete && <p className="l2-selection-hint">재생을 눌러 두 행성의 같은 시간 운동을 먼저 관찰하세요. 관찰이 끝나면 예상 질문이 열립니다.</p>}
+    <fieldset className="l2-options" disabled={!comparisonComplete}><legend>{comparisonComplete ? '같은 시간 동안 더 긴 거리를 이동한 곳은 어디일까요?' : '두 경로의 움직임을 관찰한 다음 답해 보세요.'}</legend>
       <label><input type="radio" name="speed" checked={answer === 'near-faster'} onChange={() => onAnswer('near-faster')}/> 태양에 가까운 근일점 부근</label>
       <label><input type="radio" name="speed" checked={answer === 'far-faster'} onChange={() => onAnswer('far-faster')}/> 태양에서 먼 원일점 부근</label>
       <label><input type="radio" name="speed" checked={answer === 'same'} onChange={() => onAnswer('same')}/> 두 곳에서 같다</label>
@@ -259,10 +261,10 @@ function SpeedInvestigation({ eccentricity, durationDays, periInstant, apoInstan
         </article>)}
       </div>
       <details className="l2-instant-details"><summary>정확한 계산값과 순간 속력 보기</summary><p>계산에 사용한 시간: {durationDays.toFixed(3)}일. 근일점 구간 거리 {(periDistance / 1_000_000_000).toFixed(3)}백만 km, 평균 속력 {(periAverage / 1000).toFixed(3)} km/s.</p><p>원일점 구간 거리 {(apoDistance / 1_000_000_000).toFixed(3)}백만 km, 평균 속력 {(apoAverage / 1000).toFixed(3)} km/s.</p><p>근일점 순간 속력 {(periInstant / 1000).toFixed(2)} km/s · 원일점 순간 속력 {(apoInstant / 1000).toFixed(2)} km/s</p></details>
-      <Feedback correct={answer === 'near-faster'}>{answer === 'near-faster' ? '맞아요. 행성은 태양에 가까울 때 빠르게 움직이고, 멀리 있을 때 느리게 움직입니다. 같은 시간에 가까운 곳에서는 짧은 반지름을, 먼 곳에서는 긴 반지름을 가진 부채꼴을 쓸어 면적은 같게 됩니다. 이것이 케플러 제2법칙과 연결됩니다.' : '색으로 표시한 이동 경로를 비교해 보세요. 태양에 가까운 구간에서 더 긴 거리를 움직이며, 이 차이가 같은 시간의 면적과 연결됩니다.'}</Feedback>
+      <Feedback correct={answer === 'near-faster'}>{answer === 'near-faster' ? '맞아요. 같은 시간 동안 태양 가까운 근일점 구간에서 더 긴 궤도 거리를 이동합니다. 태양에서 먼 원일점에서는 더 짧게 이동합니다. 같은 시간의 면적이 같다는 전개 1의 관찰과 함께, 케플러 제2법칙은 행성의 속력이 위치에 따라 달라지는 이유를 설명합니다.' : '두꺼운 곡선으로 표시한 궤도 위 이동 경로를 비교해 보세요. 태양으로부터의 거리가 아니라, 두 구간에서 행성이 실제로 따라간 궤도 길이를 비교합니다.'}</Feedback>
     </>}
     <label className="l2-reflection">관찰 기록<textarea rows={2} value={note} onChange={(event) => onNoteChange(event.target.value)} placeholder="같은 시간 동안 이동한 거리와 속력은 어떻게 달랐나요?"/></label>
-    <button className="l2-next" disabled={!answer} onClick={onNext}>행성 자료 분석 <span>→</span></button>
+    <button className="l2-next" disabled={!answer || !comparisonComplete} onClick={onNext}>행성 자료 분석 <span>→</span></button>
   </section>;
 }
 
@@ -286,8 +288,10 @@ function AreaSimulation({ orbit, eccentricity, onEccentricityChange, playing, se
 }) {
   const period = orbit.periodSeconds;
   const interval = period / SECTOR_COUNT;
-  const completeCount = Math.min(SECTOR_COUNT, Math.floor((elapsedSeconds / ORBIT_PERIOD_SECONDS) * SECTOR_COUNT + 1e-8));
-  const physicalElapsed = (elapsedSeconds / ORBIT_PERIOD_SECONDS) * period;
+  const animationDuration = stage === 'speed' ? ORBIT_PERIOD_SECONDS / SECTOR_COUNT : ORBIT_PERIOD_SECONDS;
+  const completeCount = stage === 'speed' ? SECTOR_COUNT : Math.min(SECTOR_COUNT, Math.floor((elapsedSeconds / ORBIT_PERIOD_SECONDS) * SECTOR_COUNT + 1e-8));
+  const speedProgress = Math.min(1, Math.max(0, elapsedSeconds / animationDuration));
+  const physicalElapsed = stage === 'speed' ? speedProgress * interval : (elapsedSeconds / ORBIT_PERIOD_SECONDS) * period;
   const current = stateAtTime(orbit.physical, Math.min(period, physicalElapsed));
   const currentX = orbit.focusX - current.positionXM * orbit.scale;
   const currentY = orbit.cy + current.positionYM * orbit.scale;
@@ -300,47 +304,59 @@ function AreaSimulation({ orbit, eccentricity, onEccentricityChange, playing, se
     firstAreaAU2: sweptAreaBetweenTimes(orbit.physical, comparisonIndices[0] * interval, (comparisonIndices[0] + 1) * interval) / ASTRONOMICAL_UNIT_M ** 2,
     secondAreaAU2: sweptAreaBetweenTimes(orbit.physical, comparisonIndices[1] * interval, (comparisonIndices[1] + 1) * interval) / ASTRONOMICAL_UNIT_M ** 2,
   } : null;
-  const periReady = completeCount >= 1;
-  const apoReady = completeCount >= 7;
-  const speedArcsReady = stage === 'speed' && periReady && apoReady;
+  const speedArcsReady = stage === 'speed' && speedProgress > 0;
+  const speedAnimationComplete = stage === 'speed' && speedProgress >= 1;
+  const periCurrent = orbitPoint(orbit, speedProgress * interval);
+  const apoCurrent = orbitPoint(orbit, 6 * interval + speedProgress * interval);
   const periDistance = distanceTraveledBetweenTimes(orbit.physical, 0, interval, 128);
   const apoDistance = distanceTraveledBetweenTimes(orbit.physical, 6 * interval, 7 * interval, 128);
 
   return <div className="l2-orbit-shell">
-    <div className="l2-orbit-head"><div><b>동일 시간 영역이 쌓이는 궤도</b><span>교육용 예시 궤도 · 이심률 {eccentricity.toFixed(2)} · 12개 동일 시간 구간</span></div><span>한 바퀴 = 60초 (1배속)</span></div>
+    <div className="l2-orbit-head"><div><b>{stage === 'area' ? '동일 시간 영역이 쌓이는 궤도' : '같은 시간 동안 이동한 궤도 거리'}</b><span>교육용 예시 궤도 · 이심률 {eccentricity.toFixed(2)}{stage === 'area' ? ' · 12개 동일 시간 구간' : ' · 근일점과 원일점 구간을 동시에 비교'}</span></div><span>{stage === 'area' ? '한 바퀴 = 60초 (1배속)' : `비교 시간 약 ${Math.round(days)}일 · 화면 배속은 아래에서 조절`}</span></div>
     {stage === 'area' && <label className="l2-eccentricity-control">교육용 궤도의 이심률 <b>{eccentricity.toFixed(2)}</b><input type="range" min="0" max="0.8" step="0.01" value={eccentricity} onChange={(event) => onEccentricityChange(Number(event.target.value))}/><small>이심률이 큰 예시 궤도입니다. 실제 행성 자료와 구분해 관찰하세요.</small></label>}
-    <svg className="l2-orbit-svg l2-sector-orbit" viewBox="0 0 700 470" role="group" aria-label={`이심률 ${eccentricity.toFixed(2)}인 궤도에서 같은 시간 간격으로 12개까지 누적되는 선택 영역입니다. 영역은 케플러 방정식으로 계산합니다.`}>
+    <svg className="l2-orbit-svg l2-sector-orbit" viewBox="0 0 700 470" role="group" aria-label={stage === 'area' ? `이심률 ${eccentricity.toFixed(2)}인 궤도에서 케플러 방정식으로 계산한 12개의 동일 시간 영역을 선택하는 시뮬레이션입니다.` : `이심률 ${eccentricity.toFixed(2)}인 타원 궤도에서 근일점과 원일점 구간의 같은 시간 이동 경로를 동시에 비교합니다.`}>
       <defs>
         <radialGradient id="l2-sun"><stop stopColor="#fff3bd"/><stop offset=".45" stopColor="#ffc957"/><stop offset="1" stopColor="#ffae45" stopOpacity=".12"/></radialGradient>
       </defs>
       <line x1={orbit.cx - orbit.rx} y1={orbit.cy} x2={orbit.cx + orbit.rx} y2={orbit.cy} stroke="#566680" strokeDasharray="5 6"/>
       <ellipse cx={orbit.cx} cy={orbit.cy} rx={orbit.rx} ry={orbit.ry} fill="rgba(160,180,219,.035)" stroke="#b6c7eb" strokeWidth="2.5"/>
-      {Array.from({ length: completeCount }, (_, index) => {
+      {stage === 'area' && Array.from({ length: completeCount }, (_, index) => {
         const start = index * interval;
         const selected = selectedSegments.includes(index);
         const point = orbitPoint(orbit, start + interval / 2);
         const labelX = orbit.focusX + (point[0] - orbit.focusX) * 0.58;
         const labelY = orbit.cy + (point[1] - orbit.cy) * 0.58;
-        return <g key={index} className={`l2-orbit-sector ${selected ? 'selected' : ''}`} role={stage === 'area' ? 'button' : undefined} tabIndex={stage === 'area' ? 0 : undefined} aria-pressed={stage === 'area' ? selected : undefined} aria-label={`${index + 1}번 영역 선택${index === 0 ? ', 근일점 부근' : index === 6 ? ', 원일점 부근' : ''}`} onClick={stage === 'area' ? () => onToggleSegment(index) : undefined} onKeyDown={stage === 'area' ? (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onToggleSegment(index); } } : undefined}><path d={sectorPath(orbit, start, start + interval)} fill={palette[index]} fillOpacity={selected ? 0.96 : selectedSegments.length ? 0.12 : 0.43} stroke={selected ? '#fff' : palette[index]} strokeOpacity={selectedSegments.length && !selected ? 0.24 : 1} strokeWidth={selected ? 3 : 1.2}/><text x={labelX} y={labelY + 4} textAnchor="middle" className="l2-sector-number" opacity={selectedSegments.length && !selected ? 0.25 : 1}>{index + 1}</text></g>;
+        const areaModeOpacity = selected ? 0.96 : selectedSegments.length ? 0.12 : 0.43;
+        return <g key={index} className={`l2-orbit-sector ${selected ? 'selected' : ''}`} role="button" tabIndex={0} aria-pressed={selected} aria-label={`${index + 1}번 영역 선택${index === 0 ? ', 근일점 부근' : index === 6 ? ', 원일점 부근' : ''}`} onClick={() => onToggleSegment(index)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onToggleSegment(index); } }}><path d={sectorPath(orbit, start, start + interval)} fill={palette[index]} fillOpacity={areaModeOpacity} stroke={selected ? '#fff' : palette[index]} strokeOpacity={selectedSegments.length && !selected ? 0.24 : 1} strokeWidth={selected ? 3 : 1.2}/><text x={labelX} y={labelY + 4} textAnchor="middle" className="l2-sector-number" opacity={selectedSegments.length && !selected ? 0.25 : 1}>{index + 1}</text></g>;
       })}
-      {elapsedSeconds < ORBIT_PERIOD_SECONDS && elapsedSeconds > 0 && completeCount < SECTOR_COUNT && <path d={sectorPath(orbit, completeCount * interval, physicalElapsed)} fill={palette[completeCount]} fillOpacity=".18" stroke={palette[completeCount]} strokeDasharray="4 4"/>}
-      {speedArcsReady && <><path d={orbitArcPath(orbit, 0, interval)} fill="none" stroke="#5de1cf" strokeWidth="6" strokeLinecap="round"/><path d={orbitArcPath(orbit, 6 * interval, 7 * interval)} fill="none" stroke="#ffb06d" strokeWidth="6" strokeLinecap="round"/></>}
+      {stage === 'area' && elapsedSeconds < ORBIT_PERIOD_SECONDS && elapsedSeconds > 0 && completeCount < SECTOR_COUNT && <path d={sectorPath(orbit, completeCount * interval, physicalElapsed)} fill={palette[completeCount]} fillOpacity=".18" stroke={palette[completeCount]} strokeDasharray="4 4"/>}
+      {speedArcsReady && <><path d={orbitArcPath(orbit, 0, speedProgress * interval)} fill="none" stroke="#5de1cf" strokeWidth="8" strokeLinecap="round"/><path d={orbitArcPath(orbit, 6 * interval, (6 + speedProgress) * interval)} fill="none" stroke="#ffb06d" strokeWidth="8" strokeLinecap="round"/></>}
       <circle cx={orbit.focusX} cy={orbit.cy} r="13" fill="url(#l2-sun)"/><circle cx={orbit.focusX} cy={orbit.cy} r="5" fill="#ffd16b"/>
       <circle cx={orbit.cx - orbit.rx} cy={orbit.cy} r="5" fill="#65e2c8" stroke="#112039" strokeWidth="2"/>
       <circle cx={orbit.cx + orbit.rx} cy={orbit.cy} r="5" fill="#ffb06d" stroke="#112039" strokeWidth="2"/>
-      <circle cx={currentX} cy={currentY} r="8" fill="#f1f5ff" stroke="#a6b7fb" strokeWidth="3"/>
+      {stage === 'area' && <circle cx={currentX} cy={currentY} r="8" fill="#f1f5ff" stroke="#a6b7fb" strokeWidth="3"/>}
+      {stage === 'speed' && <>
+        <circle cx={orbitPoint(orbit, 0)[0]} cy={orbitPoint(orbit, 0)[1]} r="6" fill="#5de1cf" stroke="#102038" strokeWidth="2" aria-label="근일점 구간 시작점"/>
+        <circle cx={orbitPoint(orbit, interval)[0]} cy={orbitPoint(orbit, interval)[1]} r="6" fill="#fff" stroke="#5de1cf" strokeWidth="3" aria-label="근일점 구간 끝점"/>
+        <circle cx={orbitPoint(orbit, 6 * interval)[0]} cy={orbitPoint(orbit, 6 * interval)[1]} r="6" fill="#ffb06d" stroke="#102038" strokeWidth="2" aria-label="원일점 구간 시작점"/>
+        <circle cx={orbitPoint(orbit, 7 * interval)[0]} cy={orbitPoint(orbit, 7 * interval)[1]} r="6" fill="#fff" stroke="#ffb06d" strokeWidth="3" aria-label="원일점 구간 끝점"/>
+        {speedProgress < 1 && <>
+          <circle cx={periCurrent[0]} cy={periCurrent[1]} r="10" fill="#5de1cf" stroke="#fff" strokeWidth="3"><title>근일점 구간 행성</title></circle>
+          <circle cx={apoCurrent[0]} cy={apoCurrent[1]} r="10" fill="#ffb06d" stroke="#fff" strokeWidth="3"><title>원일점 구간 행성</title></circle>
+        </>}
+      </>}
       <text x={Math.max(50, orbit.cx - orbit.rx - 12)} y={orbit.cy - orbit.ry - 14} textAnchor="start" className="l2-svg-label">근일점</text>
       <text x={Math.min(650, orbit.cx + orbit.rx + 12)} y={orbit.cy - orbit.ry - 14} textAnchor="end" className="l2-svg-label">원일점</text>
       <text x={orbit.focusX} y={orbit.cy + 30} textAnchor="middle" className="l2-svg-label">태양</text>
-      <text x="350" y="456" textAnchor="middle" className="l2-svg-hint">번호 영역을 선택해 비교하세요 · 각 영역 경계는 케플러 방정식으로 같은 시간 간격에 계산됩니다.</text>
+      <text x="350" y="456" textAnchor="middle" className="l2-svg-hint">{stage === 'area' ? '번호 영역을 선택해 비교하세요 · 각 영역 경계는 케플러 방정식으로 같은 시간 간격에 계산됩니다.' : '청록색과 주황색 곡선은 타원 궤도 위 이동 경로 · 원은 시작과 끝 위치입니다.'}</text>
     </svg>
-    <div className="l2-sector-status" aria-live="polite"><b>누적된 영역 {completeCount}/{SECTOR_COUNT}</b><span>{stage === 'area' ? comparison ? '두 영역을 같은 축척으로 나란히 비교합니다.' : `선택한 영역: ${selectedSegments.length}/2 · 1번은 근일점, 7번은 원일점 부근` : speedArcsReady ? revealSpeedResult ? `두 구간의 이동 시간은 약 ${Math.round(days)}일 · 1번 ${formatDistance(periDistance)}백만 km · 7번 ${formatDistance(apoDistance)}백만 km` : `청록색·주황색 선의 길이를 비교하세요. 이동 시간은 약 ${Math.round(days)}일이며, 수치 결과는 답변 후 확인합니다.` : '재생하여 1번과 7번 구간이 나타나도록 하세요.'}</span></div>
-    {comparison && <AreaComparisonFigure key={`${comparison.firstIndex}-${comparison.secondIndex}-${eccentricity}`} orbit={orbit} firstIndex={comparison.firstIndex} secondIndex={comparison.secondIndex} interval={interval} firstAreaAU2={comparison.firstAreaAU2} secondAreaAU2={comparison.secondAreaAU2} showLaw={revealAreaResult} onComplete={onComparisonComplete}/>}
-    {stage === 'speed' && <div className="l2-speed-arc-key"><span><i className="near"/>1번 · 근일점 부근 이동 거리</span><span><i className="far"/>7번 · 원일점 부근 이동 거리</span></div>}
+    <div className="l2-sector-status" aria-live="polite"><b>{stage === 'area' ? `누적된 영역 ${completeCount}/${SECTOR_COUNT}` : `같은 시간 비교 진행 ${Math.round(speedProgress * 100)}%`}</b><span>{stage === 'area' ? comparison ? '두 영역을 같은 축척으로 나란히 비교합니다.' : `선택한 영역: ${selectedSegments.length}/2 · 1번은 근일점, 7번은 원일점 부근` : revealSpeedResult ? `같은 약 ${Math.round(days)}일 동안 이동 · 근일점 호 ${formatDistance(periDistance)}백만 km · 원일점 호 ${formatDistance(apoDistance)}백만 km` : `두 행성이 동시에 출발해 각각 같은 약 ${Math.round(days)}일 동안 움직입니다. 궤도 위 두 경로의 길이를 살펴보세요.`}</span></div>
+    {comparison && stage === 'area' && <AreaComparisonFigure key={`${comparison.firstIndex}-${comparison.secondIndex}-${eccentricity}`} orbit={orbit} firstIndex={comparison.firstIndex} secondIndex={comparison.secondIndex} interval={interval} firstAreaAU2={comparison.firstAreaAU2} secondAreaAU2={comparison.secondAreaAU2} showLaw={revealAreaResult} onComplete={onComparisonComplete}/>}
+    {stage === 'speed' && <div className="l2-speed-arc-key"><span><i className="near"/>청록색 경로·행성: 근일점 구간</span><span><i className="far"/>주황색 경로·행성: 원일점 구간</span><span><i className="endpoint"/>흰 테두리 원: 구간 끝점</span></div>}
     <div className="l2-playback">
-      <div className="l2-play-buttons"><button onClick={() => { if (elapsedSeconds >= ORBIT_PERIOD_SECONDS) setElapsedSeconds(0); setPlaying(!playing); }}>{playing ? '일시정지' : '재생'}</button><button onClick={onReset}>초기화</button></div>
+      <div className="l2-play-buttons"><button onClick={() => { if (elapsedSeconds >= animationDuration) { setElapsedSeconds(0); setPlaying(true); } else setPlaying(!playing); }}>{playing ? '일시정지' : stage === 'speed' && speedAnimationComplete ? '다시 재생' : '재생'}</button><button onClick={onReset}>초기화</button></div>
       <label>배속 <select value={speedFactor} onChange={(event) => setSpeedFactor(Number(event.target.value))}><option value="0.5">0.5배</option><option value="1">1배</option><option value="2">2배</option><option value="4">4배</option></select></label>
-      <span>현재 위치: {(elapsedSeconds / ORBIT_PERIOD_SECONDS * 100).toFixed(1)}% 공전</span>
+      <span>{stage === 'speed' ? `같은 시간 운동 ${Math.round(speedProgress * 100)}% · 약 ${Math.round(days)}일 구간` : `현재 위치: ${(elapsedSeconds / ORBIT_PERIOD_SECONDS * 100).toFixed(1)}% 공전`}</span>
     </div>
   </div>;
 }
@@ -476,9 +492,10 @@ export default function KeplerLawsLesson() {
       const deltaSeconds = (now - previous) / 1000;
       previous = now;
       simulatedSeconds += deltaSeconds * speedFactor;
-      if (simulatedSeconds >= ORBIT_PERIOD_SECONDS) {
-        elapsedRef.current = ORBIT_PERIOD_SECONDS;
-        setElapsedSeconds(ORBIT_PERIOD_SECONDS);
+      const animationDuration = step === 2 ? ORBIT_PERIOD_SECONDS / SECTOR_COUNT : ORBIT_PERIOD_SECONDS;
+      if (simulatedSeconds >= animationDuration) {
+        elapsedRef.current = animationDuration;
+        setElapsedSeconds(animationDuration);
         setPlaying(false);
         return;
       }
@@ -488,7 +505,7 @@ export default function KeplerLawsLesson() {
     };
     frameId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frameId);
-  }, [playing, speedFactor]);
+  }, [playing, speedFactor, step]);
 
   function restart() {
     if (!window.confirm('2차시를 처음부터 다시 시작할까요? 지금까지의 답변과 관찰 기록이 모두 지워집니다.')) return;
@@ -525,8 +542,8 @@ export default function KeplerLawsLesson() {
         <StepProgress step={step}/>
         {(step === 1 || step === 2) && <AreaSimulation orbit={orbit} eccentricity={demoEccentricity} onEccentricityChange={(value) => { setDemoEccentricity(value); setPlaying(false); setElapsedSeconds(0); setSelectedSegments([]); setAreaAnswer(null); setAreaComparisonComplete(false); setSpeedAnswer(null); }} playing={playing} setPlaying={setPlaying} elapsedSeconds={elapsedSeconds} setElapsedSeconds={setElapsedSeconds} speedFactor={speedFactor} setSpeedFactor={setSpeedFactor} selectedSegments={selectedSegments} onToggleSegment={(index) => { setSelectedSegments((current) => current.includes(index) ? current.filter((item) => item !== index) : current.length < 2 ? [...current, index] : [current[1], index]); setAreaAnswer(null); setAreaComparisonComplete(false); }} onReset={() => { setPlaying(false); setElapsedSeconds(0); setSelectedSegments([]); setAreaAnswer(null); setAreaComparisonComplete(false); setSpeedAnswer(null); }} onComparisonComplete={setAreaComparisonComplete} revealAreaResult={step === 1 && areaAnswer !== null && selectedSegments.length === 2} revealSpeedResult={step === 2 && speedAnswer !== null} stage={step === 1 ? 'area' : 'speed'}/ >}
         {step === 0 && <section className="l2-activity"><div className="l2-heading"><span>도입 · 5분</span><h2>행성의 속도는 늘 같을까요?</h2></div><p><b>목표</b> 관찰을 시작하기 전에 자신의 예상을 남깁니다.</p><p>행성은 태양 주위를 공전할 때 항상 일정한 속도로 움직일까요? 태양에서의 거리에 따라 어떻게 달라질지 생각해 보세요.</p><fieldset className="l2-options"><legend>나의 예상</legend><label><input type="radio" name="prediction" checked={prediction === 'constant'} onChange={() => setPrediction('constant')}/> 공전하는 동안 속도는 거의 일정할 것 같다</label><label><input type="radio" name="prediction" checked={prediction === 'changes'} onChange={() => setPrediction('changes')}/> 태양과의 거리에 따라 달라질 것 같다</label><label><input type="radio" name="prediction" checked={prediction === 'unsure'} onChange={() => setPrediction('unsure')}/> 아직 잘 모르겠다</label></fieldset>{prediction && <Feedback>예상을 기록했습니다. 시뮬레이션을 관찰한 뒤 자신의 생각을 비교해 보세요.</Feedback>}<label className="l2-reflection">예상한 까닭<textarea rows={2} value={notes.prediction} onChange={(event) => setNotes({ ...notes, prediction: event.target.value })} placeholder="지금 떠오르는 생각을 짧게 적어 보세요."/></label><button className="l2-next" disabled={!prediction} onClick={() => setStep(1)}>면적 비교 시작 <span>→</span></button></section>}
-        {step === 1 && <AreaInvestigation answer={areaAnswer} onAnswer={setAreaAnswer} pairReady={selectedSegments.length === 2} comparisonComplete={areaComparisonComplete} note={notes.area} onNoteChange={(value) => setNotes({ ...notes, area: value })} onNext={() => { setPlaying(false); setStep(2); }}/ >}
-        {step === 2 && <SpeedInvestigation eccentricity={demoEccentricity} durationDays={comparisonDays} periInstant={periVelocity} apoInstant={apoVelocity} periDistance={periDistance} apoDistance={apoDistance} periAverage={periAverageSpeed} apoAverage={apoAverageSpeed} answer={speedAnswer} onAnswer={setSpeedAnswer} note={notes.speed} onNoteChange={(value) => setNotes({ ...notes, speed: value })} onNext={() => setStep(3)}/>}
+        {step === 1 && <AreaInvestigation answer={areaAnswer} onAnswer={setAreaAnswer} pairReady={selectedSegments.length === 2} comparisonComplete={areaComparisonComplete} note={notes.area} onNoteChange={(value) => setNotes({ ...notes, area: value })} onNext={() => { setPlaying(false); setElapsedSeconds(0); elapsedRef.current = 0; setSpeedAnswer(null); setStep(2); }}/ >}
+        {step === 2 && <SpeedInvestigation eccentricity={demoEccentricity} durationDays={comparisonDays} periInstant={periVelocity} apoInstant={apoVelocity} periDistance={periDistance} apoDistance={apoDistance} periAverage={periAverageSpeed} apoAverage={apoAverageSpeed} comparisonComplete={elapsedSeconds >= ORBIT_PERIOD_SECONDS / SECTOR_COUNT} answer={speedAnswer} onAnswer={setSpeedAnswer} note={notes.speed} onNoteChange={(value) => setNotes({ ...notes, speed: value })} onNext={() => setStep(3)}/>}
         {step === 3 && <PlanetDataInvestigation selectedId={selectedPlanet} onSelect={setSelectedPlanet} periodAnswer={periodAnswer} onPeriodAnswer={setPeriodAnswer} ratioAnswer={thirdAnswer} onRatioAnswer={setThirdAnswer} note={notes.third} onNoteChange={(value) => setNotes({ ...notes, third: value })} onNext={() => setStep(4)}/>}
         {step === 4 && !completed && <section className="l2-activity"><div className="l2-heading"><span>정리 · 5분</span><h2>관찰한 내용을 법칙에 연결해요</h2></div><p><b>목표</b> 케플러 세 법칙이 행성 운동의 어떤 특징을 설명하는지 구분합니다.</p><div className="l2-match-list"><label>행성 궤도는 타원이며 태양은 한 초점에 있다<select value={summary.first} onChange={(event) => setSummary({ ...summary, first: event.target.value })}><option value="">법칙 선택</option><option value="1">제1법칙</option><option value="2">제2법칙</option><option value="3">제3법칙</option></select></label><label>같은 시간 동안 태양-행성 선분이 같은 면적을 쓸고 간다<select value={summary.second} onChange={(event) => setSummary({ ...summary, second: event.target.value })}><option value="">법칙 선택</option><option value="1">제1법칙</option><option value="2">제2법칙</option><option value="3">제3법칙</option></select></label><label>공전주기의 제곱은 긴반지름의 세제곱에 비례한다<select value={summary.third} onChange={(event) => setSummary({ ...summary, third: event.target.value })}><option value="">법칙 선택</option><option value="1">제1법칙</option><option value="2">제2법칙</option><option value="3">제3법칙</option></select></label></div><button className="l2-check" disabled={!summary.first || !summary.second || !summary.third} onClick={() => setSummarySubmitted(true)}>정리 확인</button>{summarySubmitted && <Feedback correct={summary.first === '1' && summary.second === '2' && summary.third === '3'}>{summary.first === '1' && summary.second === '2' && summary.third === '3' ? '세 법칙을 모두 알맞게 연결했어요. 다음 차시에는 이 원리를 이용해 지구에서 화성으로 가는 이상적인 탐사선 궤도를 살펴봅니다.' : '각 문장에서 궤도의 모양, 같은 시간의 면적, 주기와 크기 중 무엇을 설명하는지 다시 생각해 보세요.'}</Feedback>}<label className="l2-reflection">오늘의 한 줄 정리<textarea rows={2} value={notes.summary} onChange={(event) => setNotes({ ...notes, summary: event.target.value })} placeholder="제2법칙과 제3법칙을 한 문장씩 정리해 보세요."/></label><button className="l2-next" disabled={!summarySubmitted || summary.first !== '1' || summary.second !== '2' || summary.third !== '3'} onClick={() => setCompleted(true)}>2차시 완료 <span>✓</span></button></section>}
         {completed && <LessonCompletion title="2차시 탐구를 마쳤어요" introduction="같은 시간 동안의 면적과 행성 자료를 통해 케플러 제2·3법칙을 확인했습니다." summaryTitle="오늘의 핵심" summary="제2법칙: 같은 시간 동안 같은 면적을 쓸고 지나갑니다. 제3법칙: P²은 a³에 비례합니다." detail="태양에 가까운 구간에서는 같은 시간 동안 더 긴 궤도 거리를 이동합니다." nextLesson="다음 시간에는 케플러 법칙을 활용해 지구에서 화성으로 향하는 탐사선의 전이 궤도를 탐구합니다." onRestart={restart}/>}
