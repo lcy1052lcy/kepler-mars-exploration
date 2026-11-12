@@ -6,6 +6,7 @@ import KeplerLawsLesson from '../features/lesson-02/KeplerLawsLesson';
 import LessonCompletion from './LessonCompletion';
 import LessonStepNavigation from './LessonStepNavigation';
 import { clearLessonStoredState, isBoolean, isIndexList, isIntegerBetween, isNumberBetween, isString, useLessonStoredState } from './lessonProgress';
+import { lessonOneSimulationState } from './lessonOneSimulation';
 
 type Step = 0 | 1 | 2 | 3;
 
@@ -72,7 +73,7 @@ export default function App() {
   const [highestStep, setHighestStep] = useLessonStoredState('1', 'highestStep', 0, (value): value is number => isIntegerBetween(value, 0, 3));
   const [completedSteps, setCompletedSteps] = useLessonStoredState('1', 'completedSteps', [] as number[], (value): value is number[] => isIndexList(value, 3));
   const [eccentricity, setEccentricity] = useLessonStoredState('1', 'eccentricity', 0.35, (value): value is number => isNumberBetween(value, 0, 0.8));
-  const [mode, setMode] = useLessonStoredState<'concept' | 'planet'>('1', 'mode', 'concept', (value): value is 'concept' | 'planet' => value === 'concept' || value === 'planet');
+  const [focusEccentricity, setFocusEccentricity] = useLessonStoredState('1', 'focusEccentricity', 0.5, (value): value is number => isNumberBetween(value, 0, 0.5));
   const [selectedPlanet, setSelectedPlanet] = useLessonStoredState('1', 'selectedPlanet', 'earth', (value): value is string => typeof value === 'string' && PLANET_ECCENTRICITIES.some((planet) => planet.id === value));
   const [answer1, setAnswer1] = useLessonStoredState<string | null>('1', 'answer1', null, (value): value is string | null => value === null || value === 'circle' || value === 'ellipse');
   const [answer2, setAnswer2] = useLessonStoredState<'center' | 'left' | 'right' | 'orbit' | null>('1', 'answer2', null, (value): value is 'center' | 'left' | 'right' | 'orbit' | null => value === null || value === 'center' || value === 'left' || value === 'right' || value === 'orbit');
@@ -87,7 +88,13 @@ export default function App() {
   const [orbitInfo, setOrbitInfo] = useState<OrbitInfoKey | null>(null);
 
   const activePlanet = PLANET_ECCENTRICITIES.find((planet) => planet.id === selectedPlanet)!;
-  const activeEccentricity = mode === 'concept' ? eccentricity : activePlanet.eccentricity;
+  // Resolve the mode from the restored step so navigation and reload cannot retain a stale mode.
+  const { mode, eccentricity: conceptEccentricity } = lessonOneSimulationState(step, {
+    freeEccentricity: eccentricity,
+    focusEccentricity,
+    planetEccentricity: activePlanet.eccentricity,
+  });
+  const activeEccentricity = conceptEccentricity;
   const orbit = ellipseGeometry(ASTRONOMICAL_UNIT_M, activeEccentricity);
   const lesson = lessons.find((item) => item.id === selectedLesson)!;
   const largestEccentricityPlanet = [...PLANET_ECCENTRICITIES].sort((a, b) => b.eccentricity - a.eccentricity)[0];
@@ -112,7 +119,7 @@ export default function App() {
     setHighestStep(0);
     setCompletedSteps([]);
     setEccentricity(0.35);
-    setMode('concept');
+    setFocusEccentricity(0.5);
     setSelectedPlanet('earth');
     setSelectedLesson(1);
     setAnswer1(null);
@@ -141,11 +148,7 @@ export default function App() {
     setHighestStep((current) => Math.max(current, next));
     setStep(next);
     setCompleted(false);
-    if (firstVisit && next === 1) {
-      setMode('concept');
-      setEccentricity(0.5);
-    }
-    if (firstVisit && next === 2) setMode('planet');
+    if (firstVisit && next === 1) setFocusEccentricity(0.5);
   }
 
   function finishLesson() {
@@ -186,7 +189,7 @@ export default function App() {
             <div className="orbit-data" aria-live="polite"><div><span>근일점 거리</span><b>{(orbit.periapsisDistance / ASTRONOMICAL_UNIT_M).toFixed(3)} <small>AU</small></b></div><div><span>원일점 거리</span><b>{(orbit.apoapsisDistance / ASTRONOMICAL_UNIT_M).toFixed(3)} <small>AU</small></b></div><div><span>이심률</span><b>{activeEccentricity.toFixed(mode === 'concept' ? 2 : 4)}</b></div></div>
             {mode === 'planet' && <p className="comparison-distance-note">행성 모드의 긴반지름을 1 AU로 맞춰 계산한 비교용 거리입니다. 실제 행성의 태양 거리와 다릅니다.</p>}
             <div className="orbit-controls">
-              {mode === 'concept' ? <div className="slider-control"><label htmlFor="eccentricity">이심률 <strong>{eccentricity.toFixed(2)}</strong></label><input id="eccentricity" aria-label="개념 학습 이심률" type="range" min="0" max="0.8" step="0.01" value={eccentricity} onChange={(event) => setEccentricity(Number(event.target.value))} /><div className="range-labels"><span>원에 가까움</span><span>길쭉한 타원</span></div></div> : <div className="planet-control"><span>행성을 선택해 이심률을 비교하세요</span><div>{PLANET_ECCENTRICITIES.map((planet) => <button key={planet.id} className={selectedPlanet === planet.id ? 'selected' : ''} aria-pressed={selectedPlanet === planet.id} onClick={() => setSelectedPlanet(planet.id)}>{planet.name}</button>)}</div></div>}
+              {mode === 'concept' ? <div className="slider-control"><label htmlFor="eccentricity">이심률 <strong>{conceptEccentricity.toFixed(2)}</strong></label><input id="eccentricity" aria-label={step === 1 ? '초점 관찰 이심률' : '개념 학습 이심률'} type="range" min="0" max={step === 1 ? '0.5' : '0.8'} step="0.01" value={conceptEccentricity} onChange={(event) => { const value = Number(event.target.value); if (step === 1) setFocusEccentricity(value); else setEccentricity(value); }} /><div className="range-labels"><span>원에 가까움</span><span>길쭉한 타원</span></div></div> : <div className="planet-control"><span>행성을 선택해 이심률을 비교하세요</span><div>{PLANET_ECCENTRICITIES.map((planet) => <button key={planet.id} className={selectedPlanet === planet.id ? 'selected' : ''} aria-pressed={selectedPlanet === planet.id} onClick={() => setSelectedPlanet(planet.id)}>{planet.name}</button>)}</div></div>}
             </div>
             {mode === 'planet' && <p className="scale-note">모양을 비교하려고 화면의 긴반지름 길이를 같게 맞췄습니다. 실제 궤도 크기는 행성마다 다릅니다. <a href={PLANET_ECCENTRICITY_SOURCE.url} target="_blank" rel="noreferrer">자료: NASA Goddard Planetary Fact Sheet</a></p>}
           </section>
@@ -208,7 +211,7 @@ export default function App() {
               <div className="interaction-hint">태양은 타원의 중심, 한 초점, 궤도 위 중 어디에 있나요?</div>
               <div className="position-options" role="group" aria-label="태양의 위치 선택"><button className={answer2 === 'center' ? 'selected' : ''} aria-pressed={answer2 === 'center'} onClick={() => chooseFocus('center')}>타원의 중심</button><button className={answer2 === 'left' || answer2 === 'right' ? 'selected' : ''} aria-pressed={answer2 === 'left' || answer2 === 'right'} onClick={() => chooseFocus('left')}>한 초점</button><button className={answer2 === 'orbit' ? 'selected' : ''} aria-pressed={answer2 === 'orbit'} onClick={() => chooseFocus('orbit')}>궤도 위</button></div>
               {answer2 !== null && <Feedback correct={answer2 === 'left' || answer2 === 'right'}>{answer2 === 'left' || answer2 === 'right' ? '맞아요. 케플러 제1법칙은 행성의 궤도가 타원이고 태양은 두 초점 중 하나에 있다고 설명합니다. 이심률을 낮추면 두 초점이 중심 쪽으로 가까워집니다.' : '태양은 타원의 중심이나 궤도 위가 아니라 두 초점 중 한 곳에 있습니다. 케플러 제1법칙과 연결해 다시 살펴보세요.'}</Feedback>}
-              {focusAttempted && <div className="lower-eccentricity"><label htmlFor="focus-eccentricity">이심률을 낮춰 초점 간격 관찰 <b>{eccentricity.toFixed(2)}</b></label><input id="focus-eccentricity" type="range" min="0" max="0.5" step="0.01" value={eccentricity} onChange={(event) => setEccentricity(Number(event.target.value))}/></div>}
+              {focusAttempted && <div className="lower-eccentricity"><label htmlFor="focus-eccentricity">이심률을 낮춰 초점 간격 관찰 <b>{focusEccentricity.toFixed(2)}</b></label><input id="focus-eccentricity" type="range" min="0" max="0.5" step="0.01" value={focusEccentricity} onChange={(event) => setFocusEccentricity(Number(event.target.value))}/></div>}
               <label className="reflection-field">관찰 기록 <textarea value={reflection2} onChange={(event) => setReflection2(event.target.value)} placeholder="중심과 초점은 어떻게 다른 위치인가요?" rows={2}/></label>
               <button className="next-step" disabled={answer2 === null} onClick={() => advanceTo(2)}>다음 탐구 <span>→</span></button>
             </>}

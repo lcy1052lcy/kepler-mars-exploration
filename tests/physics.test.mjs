@@ -13,6 +13,7 @@ const sourcePaths = [
   path.resolve('src/physics/constants.ts'),
   path.resolve('src/content/planetOrbitData.ts'),
   path.resolve('src/content/planetEccentricities.ts'),
+  path.resolve('src/ui/lessonOneSimulation.ts'),
 ];
 const tempDirectory = await fs.mkdtemp(path.join(os.tmpdir(), 'kepler-physics-'));
 for (const file of sourcePaths) {
@@ -25,6 +26,7 @@ const { ASTRONOMICAL_UNIT_M, SOLAR_MU_M3_S2, SECONDS_PER_JULIAN_YEAR } = require
 const { distanceTraveledBetweenTimes, sweptAreaBetweenTimes, thirdLawRatio } = require(path.join(tempDirectory, 'kepler.cjs'));
 const { PLANET_ORBIT_DATA } = require(path.join(tempDirectory, 'planetOrbitData.cjs'));
 const { PLANET_ECCENTRICITIES } = require(path.join(tempDirectory, 'planetEccentricities.cjs'));
+const { lessonOneSimulationState } = require(path.join(tempDirectory, 'lessonOneSimulation.cjs'));
 const close = (actual, expected, relativeTolerance = 1e-10) => assert.ok(Math.abs(actual - expected) / Math.abs(expected) < relativeTolerance, `${actual} is not within tolerance of ${expected}`);
 
 test('circle has equal radii and coincident foci', () => {
@@ -137,4 +139,14 @@ test('NASA planet data covers eight planets and shows P²/a³ near one in years 
 test('first-lesson planet eccentricity data remains valid and complete', () => {
   assert.equal(PLANET_ECCENTRICITIES.length, 8);
   for (const planet of PLANET_ECCENTRICITIES) assert.ok(planet.eccentricity >= 0 && planet.eccentricity < 1);
+});
+
+test('first-lesson step navigation restores the matching simulation mode and independent settings', () => {
+  const settings = { freeEccentricity: 0.27, focusEccentricity: 0.5, planetEccentricity: 0.0167 };
+  assert.deepEqual(lessonOneSimulationState(0, settings), { mode: 'concept', eccentricity: 0.27 });
+  assert.deepEqual(lessonOneSimulationState(1, settings), { mode: 'concept', eccentricity: 0.5 });
+  assert.deepEqual(lessonOneSimulationState(2, settings), { mode: 'planet', eccentricity: 0.0167 });
+  assert.deepEqual(lessonOneSimulationState(3, settings), { mode: 'planet', eccentricity: 0.0167 });
+  assert.equal(settings.freeEccentricity, 0.27);
+  assert.equal(settings.focusEccentricity, 0.5);
 });
