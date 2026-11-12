@@ -3,6 +3,7 @@ import { lessons } from '../content/lessons';
 import { PLANET_ECCENTRICITIES, PLANET_ECCENTRICITY_SOURCE } from '../content/planetEccentricities';
 import { ASTRONOMICAL_UNIT_M, ellipseGeometry } from '../physics';
 import KeplerLawsLesson from '../features/lesson-02/KeplerLawsLesson';
+import LessonCompletion from './LessonCompletion';
 
 type Step = 0 | 1 | 2 | 3;
 
@@ -209,11 +210,11 @@ export default function App() {
               <label className="reflection-field">나의 설명 <textarea value={finalExplanation} onChange={(event) => setFinalExplanation(event.target.value)} placeholder="행성의 궤도와 태양의 위치를 함께 설명해 보세요." rows={3}/></label>
               <button className="next-step" disabled={finalExplanation.trim().length < 8} onClick={() => setCompleted(true)}>탐구 완료 <span>✓</span></button>
             </>}
-            {completed && <div className="completion-panel"><span className="completion-check">✓</span><h2>1차시 탐구를 마쳤어요</h2><p>이심률에 따른 궤도 모양을 살펴보고, 태양이 타원의 한 초점에 있음을 확인했습니다.</p><div className="law-summary"><span>기억할 내용</span><p>행성의 궤도는 타원이며, 태양은 한 초점에 있습니다.</p></div><p className="next-lesson-preview">다음 시간에는 행성이 태양 주위를 공전할 때 속력이 어떻게 달라지는지, 공전주기에는 어떤 규칙이 있는지 탐구합니다.</p></div>}
+            {completed && <LessonCompletion title="1차시 탐구를 마쳤어요" introduction="이심률에 따른 궤도 모양을 살펴보고, 태양이 타원의 한 초점에 있음을 확인했습니다." summaryTitle="케플러 제1법칙" summary="행성의 궤도는 타원이며, 태양은 타원의 한 초점에 있습니다." detail="이심률이 0이면 두 초점은 중심에서 겹치며, 원은 타원의 한 경우입니다." nextLesson="다음 시간에는 행성이 태양 주위를 공전할 때 속력이 어떻게 달라지는지, 공전주기에는 어떤 규칙이 있는지 탐구합니다." onRestart={restartFromBeginning}/>}
           </section>
         </div>
 
-        <aside className="teacher-strip"><b>조작 방법</b><p>이심률 손잡이를 끌어 궤도 모양을 바꾸세요. 실제 행성 모드에서는 행성 이름을 눌러 궤도를 비교합니다.</p><button onClick={restartFromBeginning}>처음부터 다시하기</button></aside>
+        <aside className="teacher-strip"><b>조작 방법</b><p>이심률 손잡이를 끌어 궤도 모양을 바꾸세요. 실제 행성 모드에서는 행성 이름을 눌러 궤도를 비교합니다.</p>{!completed && <button onClick={restartFromBeginning}>처음부터 다시하기</button>}</aside>
       </section>
     </main>}
   </div>;

@@ -69,25 +69,25 @@ test('Cartesian state coordinates are consistent with the orbital radius', () =>
 test('equal elapsed times sweep equal areas near perihelion and aphelion', () => {
   const orbit = { semiMajorAxisM: ASTRONOMICAL_UNIT_M, eccentricity: 0.65, gravitationalParameterM3S2: SOLAR_MU_M3_S2 };
   const period = orbitalPeriodSeconds(orbit);
-  const duration = period * 0.035;
+  const duration = period / 12;
   const nearArea = sweptAreaBetweenTimes(orbit, 0, duration);
-  const farArea = sweptAreaBetweenTimes(orbit, period / 2 - duration / 2, period / 2 + duration / 2);
+  const farArea = sweptAreaBetweenTimes(orbit, 6 * duration, 7 * duration);
   close(nearArea, farArea, 1e-13);
 });
 test('equal elapsed intervals travel farther near perihelion than aphelion', () => {
   const orbit = { semiMajorAxisM: ASTRONOMICAL_UNIT_M, eccentricity: 0.65, gravitationalParameterM3S2: SOLAR_MU_M3_S2 };
   const period = orbitalPeriodSeconds(orbit);
-  const duration = period * 0.035;
+  const duration = period / 12;
   const nearDistance = distanceTraveledBetweenTimes(orbit, 0, duration, 128);
-  const farDistance = distanceTraveledBetweenTimes(orbit, period / 2 - duration / 2, period / 2 + duration / 2, 128);
+  const farDistance = distanceTraveledBetweenTimes(orbit, 6 * duration, 7 * duration, 128);
   assert.ok(nearDistance > farDistance * 2);
 });
 test('average speed equals integrated path distance divided by the shared elapsed time', () => {
   const orbit = { semiMajorAxisM: ASTRONOMICAL_UNIT_M, eccentricity: 0.62, gravitationalParameterM3S2: SOLAR_MU_M3_S2 };
   const period = orbitalPeriodSeconds(orbit);
-  const duration = period * 0.035;
+  const duration = period / 12;
   const nearDistance = distanceTraveledBetweenTimes(orbit, 0, duration, 128);
-  const farStart = period / 2 - duration / 2;
+  const farStart = 6 * duration;
   const farDistance = distanceTraveledBetweenTimes(orbit, farStart, farStart + duration, 128);
   const nearAverage = averageSpeedMS(nearDistance, duration);
   const farAverage = averageSpeedMS(farDistance, duration);
@@ -95,6 +95,15 @@ test('average speed equals integrated path distance divided by the shared elapse
   close(farAverage * duration, farDistance, 1e-12);
   assert.ok(nearAverage > farAverage);
   assert.throws(() => averageSpeedMS(1, 0), RangeError);
+});
+test('twelve sequential equal-time sectors have equal swept areas for circular and elliptical orbits', () => {
+  for (const eccentricity of [0, 0.62, 0.8]) {
+    const orbit = { semiMajorAxisM: ASTRONOMICAL_UNIT_M, eccentricity, gravitationalParameterM3S2: SOLAR_MU_M3_S2 };
+    const duration = orbitalPeriodSeconds(orbit) / 12;
+    const areas = Array.from({ length: 12 }, (_, index) => sweptAreaBetweenTimes(orbit, index * duration, (index + 1) * duration));
+    for (const area of areas) close(area, areas[0], 1e-13);
+    close(areas.reduce((sum, area) => sum + area, 0), sweptAreaBetweenTimes(orbit, 0, orbitalPeriodSeconds(orbit)), 1e-12);
+  }
 });
 test('third-law ratio from the two-body period matches 4π²/μ', () => {
   const orbit = { semiMajorAxisM: ASTRONOMICAL_UNIT_M, eccentricity: 0.3, gravitationalParameterM3S2: SOLAR_MU_M3_S2 };
