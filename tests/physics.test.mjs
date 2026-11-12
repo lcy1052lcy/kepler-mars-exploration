@@ -20,7 +20,7 @@ for (const file of sourcePaths) {
   const output = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
   await fs.writeFile(path.join(tempDirectory, path.basename(file, '.ts') + '.cjs'), output);
 }
-const { ellipseGeometry, eccentricAnomalyFromMean, orbitalPeriodSeconds, stateAtTime, stateAtTrueAnomaly } = require(path.join(tempDirectory, 'kepler.cjs'));
+const { averageSpeedMS, ellipseGeometry, eccentricAnomalyFromMean, orbitalPeriodSeconds, stateAtTime, stateAtTrueAnomaly } = require(path.join(tempDirectory, 'kepler.cjs'));
 const { ASTRONOMICAL_UNIT_M, SOLAR_MU_M3_S2, SECONDS_PER_JULIAN_YEAR } = require(path.join(tempDirectory, 'constants.cjs'));
 const { distanceTraveledBetweenTimes, sweptAreaBetweenTimes, thirdLawRatio } = require(path.join(tempDirectory, 'kepler.cjs'));
 const { PLANET_ORBIT_DATA } = require(path.join(tempDirectory, 'planetOrbitData.cjs'));
@@ -81,6 +81,20 @@ test('equal elapsed intervals travel farther near perihelion than aphelion', () 
   const nearDistance = distanceTraveledBetweenTimes(orbit, 0, duration, 128);
   const farDistance = distanceTraveledBetweenTimes(orbit, period / 2 - duration / 2, period / 2 + duration / 2, 128);
   assert.ok(nearDistance > farDistance * 2);
+});
+test('average speed equals integrated path distance divided by the shared elapsed time', () => {
+  const orbit = { semiMajorAxisM: ASTRONOMICAL_UNIT_M, eccentricity: 0.62, gravitationalParameterM3S2: SOLAR_MU_M3_S2 };
+  const period = orbitalPeriodSeconds(orbit);
+  const duration = period * 0.035;
+  const nearDistance = distanceTraveledBetweenTimes(orbit, 0, duration, 128);
+  const farStart = period / 2 - duration / 2;
+  const farDistance = distanceTraveledBetweenTimes(orbit, farStart, farStart + duration, 128);
+  const nearAverage = averageSpeedMS(nearDistance, duration);
+  const farAverage = averageSpeedMS(farDistance, duration);
+  close(nearAverage * duration, nearDistance, 1e-12);
+  close(farAverage * duration, farDistance, 1e-12);
+  assert.ok(nearAverage > farAverage);
+  assert.throws(() => averageSpeedMS(1, 0), RangeError);
 });
 test('third-law ratio from the two-body period matches 4π²/μ', () => {
   const orbit = { semiMajorAxisM: ASTRONOMICAL_UNIT_M, eccentricity: 0.3, gravitationalParameterM3S2: SOLAR_MU_M3_S2 };

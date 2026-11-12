@@ -55,6 +55,13 @@ export function thirdLawRatio(periodSeconds: number, semiMajorAxisM: number): nu
   return periodSeconds ** 2 / semiMajorAxisM ** 3;
 }
 
+/** Average speed over a path interval: distance divided by elapsed time. */
+export function averageSpeedMS(distanceM: number, elapsedSeconds: number): number {
+  if (!Number.isFinite(distanceM) || distanceM < 0) throw new RangeError('distanceM must be nonnegative and finite');
+  if (!Number.isFinite(elapsedSeconds) || elapsedSeconds <= 0) throw new RangeError('elapsedSeconds must be positive and finite');
+  return distanceM / elapsedSeconds;
+}
+
 /** Position and speed from true anomaly using the conic equation and vis-viva equation. */
 export function stateAtTrueAnomaly(orbit: EllipticOrbit, trueAnomalyRad: number): OrbitalState {
   assertOrbit(orbit);

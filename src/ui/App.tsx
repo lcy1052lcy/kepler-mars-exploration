@@ -209,7 +209,7 @@ export default function App() {
               <label className="reflection-field">나의 설명 <textarea value={finalExplanation} onChange={(event) => setFinalExplanation(event.target.value)} placeholder="행성의 궤도와 태양의 위치를 함께 설명해 보세요." rows={3}/></label>
               <button className="next-step" disabled={finalExplanation.trim().length < 8} onClick={() => setCompleted(true)}>탐구 완료 <span>✓</span></button>
             </>}
-            {completed && <div className="completion-panel"><span className="completion-check">✓</span><h2>1차시 탐구를 마쳤어요</h2><p>이심률에 따른 궤도 모양을 살펴보고, 태양이 타원의 한 초점에 있음을 확인했습니다.</p><div className="law-summary"><span>기억할 내용</span><p>행성의 궤도는 타원이며, 태양은 한 초점에 있습니다.</p></div></div>}
+            {completed && <div className="completion-panel"><span className="completion-check">✓</span><h2>1차시 탐구를 마쳤어요</h2><p>이심률에 따른 궤도 모양을 살펴보고, 태양이 타원의 한 초점에 있음을 확인했습니다.</p><div className="law-summary"><span>기억할 내용</span><p>행성의 궤도는 타원이며, 태양은 한 초점에 있습니다.</p></div><p className="next-lesson-preview">다음 시간에는 행성이 태양 주위를 공전할 때 속력이 어떻게 달라지는지, 공전주기에는 어떤 규칙이 있는지 탐구합니다.</p></div>}
           </section>
         </div>
 
