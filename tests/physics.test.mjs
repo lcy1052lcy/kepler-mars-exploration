@@ -14,12 +14,15 @@ const sourcePaths = [
   path.resolve('src/content/planetOrbitData.ts'),
   path.resolve('src/content/planetEccentricities.ts'),
   path.resolve('src/ui/lessonOneSimulation.ts'),
+  path.resolve('src/physics/transfers.ts'),
 ];
 const tempDirectory = await fs.mkdtemp(path.join(os.tmpdir(), 'kepler-physics-'));
 for (const file of sourcePaths) {
   const source = await fs.readFile(file, 'utf8');
   const output = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
   await fs.writeFile(path.join(tempDirectory, path.basename(file, '.ts') + '.cjs'), output);
+  // Preserve relative TypeScript imports in transpiled output (e.g. require('./constants')).
+  await fs.writeFile(path.join(tempDirectory, path.basename(file, '.ts') + '.js'), output);
 }
 const { averageSpeedMS, ellipseGeometry, eccentricAnomalyFromMean, orbitalPeriodSeconds, stateAtTime, stateAtTrueAnomaly } = require(path.join(tempDirectory, 'kepler.cjs'));
 const { ASTRONOMICAL_UNIT_M, SOLAR_MU_M3_S2, SECONDS_PER_JULIAN_YEAR } = require(path.join(tempDirectory, 'constants.cjs'));
@@ -27,6 +30,7 @@ const { distanceTraveledBetweenTimes, sweptAreaBetweenTimes, thirdLawRatio } = r
 const { PLANET_ORBIT_DATA } = require(path.join(tempDirectory, 'planetOrbitData.cjs'));
 const { PLANET_ECCENTRICITIES } = require(path.join(tempDirectory, 'planetEccentricities.cjs'));
 const { lessonOneSimulationState } = require(path.join(tempDirectory, 'lessonOneSimulation.cjs'));
+const { ellipseFromApsisDistancesAU, hohmannTransfer } = require(path.join(tempDirectory, 'transfers.cjs'));
 const close = (actual, expected, relativeTolerance = 1e-10) => assert.ok(Math.abs(actual - expected) / Math.abs(expected) < relativeTolerance, `${actual} is not within tolerance of ${expected}`);
 
 test('circle has equal radii and coincident foci', () => {
@@ -149,4 +153,33 @@ test('first-lesson step navigation restores the matching simulation mode and ind
   assert.deepEqual(lessonOneSimulationState(3, settings), { mode: 'planet', eccentricity: 0.0167 });
   assert.equal(settings.freeEccentricity, 0.27);
   assert.equal(settings.focusEccentricity, 0.5);
+});
+
+test('ideal Earth-to-Mars Hohmann transfer has the expected ellipse and half-period travel time', () => {
+  const transfer = hohmannTransfer(1, 1.524);
+  close(transfer.semiMajorAxisAU, 1.262, 1e-14);
+  close(transfer.periapsisAU, 1, 1e-14);
+  close(transfer.apoapsisAU, 1.524, 1e-14);
+  close(transfer.eccentricity, (1.524 - 1) / (1.524 + 1), 1e-14);
+  close(transfer.periodYears, 1.417720660132386, 1e-12);
+  close(transfer.transferDays, 258.911235556677, 1e-12);
+  assert.equal(transfer.transferSeconds * 2, transfer.periodSeconds);
+});
+
+test('Hohmann transfer follows Kepler motion from Earth orbit to Mars orbit with slower arrival', () => {
+  const transfer = hohmannTransfer();
+  const departure = stateAtTime(transfer.orbit, 0);
+  const arrival = stateAtTime(transfer.orbit, transfer.transferSeconds);
+  close(departure.radiusM / ASTRONOMICAL_UNIT_M, 1, 1e-12);
+  close(arrival.radiusM / ASTRONOMICAL_UNIT_M, 1.524, 1e-12);
+  assert.ok(departure.speedMS > arrival.speedMS);
+  const equalInterval = transfer.transferSeconds * 0.05;
+  const departureDistance = distanceTraveledBetweenTimes(transfer.orbit, 0, equalInterval, 128);
+  const arrivalDistance = distanceTraveledBetweenTimes(transfer.orbit, transfer.transferSeconds - equalInterval, transfer.transferSeconds, 128);
+  assert.ok(departureDistance > arrivalDistance);
+});
+
+test('ellipse from arbitrary apsides rejects invalid transfer distances', () => {
+  assert.throws(() => ellipseFromApsisDistancesAU(1.2, 1), RangeError);
+  assert.throws(() => ellipseFromApsisDistancesAU(0, 1.5), RangeError);
 });
