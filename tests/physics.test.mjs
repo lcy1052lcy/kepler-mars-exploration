@@ -105,6 +105,21 @@ test('twelve sequential equal-time sectors have equal swept areas for circular a
     close(areas.reduce((sum, area) => sum + area, 0), sweptAreaBetweenTimes(orbit, 0, orbitalPeriodSeconds(orbit)), 1e-12);
   }
 });
+test('equal-time visual slices conserve each selected sector area at different eccentricities', () => {
+  const sliceCount = 8;
+  for (const eccentricity of [0.15, 0.62, 0.8]) {
+    const orbit = { semiMajorAxisM: ASTRONOMICAL_UNIT_M, eccentricity, gravitationalParameterM3S2: SOLAR_MU_M3_S2 };
+    const sectorDuration = orbitalPeriodSeconds(orbit) / 12;
+    for (const sectorIndex of [0, 2, 6, 9]) {
+      const start = sectorIndex * sectorDuration;
+      const pieceDuration = sectorDuration / sliceCount;
+      const pieces = Array.from({ length: sliceCount }, (_, piece) => sweptAreaBetweenTimes(orbit, start + piece * pieceDuration, start + (piece + 1) * pieceDuration));
+      const sectorArea = sweptAreaBetweenTimes(orbit, start, start + sectorDuration);
+      for (const pieceArea of pieces) close(pieceArea, sectorArea / sliceCount, 1e-12);
+      close(pieces.reduce((sum, area) => sum + area, 0), sectorArea, 1e-12);
+    }
+  }
+});
 test('third-law ratio from the two-body period matches 4π²/μ', () => {
   const orbit = { semiMajorAxisM: ASTRONOMICAL_UNIT_M, eccentricity: 0.3, gravitationalParameterM3S2: SOLAR_MU_M3_S2 };
   const ratio = thirdLawRatio(orbitalPeriodSeconds(orbit), orbit.semiMajorAxisM);
