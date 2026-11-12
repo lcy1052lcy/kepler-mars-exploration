@@ -18,6 +18,7 @@ import LessonCompletion from '../../ui/LessonCompletion';
 const DEMO_ECCENTRICITY = 0.62;
 const ORBIT_PERIOD_SECONDS = 60;
 const SECTOR_COUNT = 12;
+const SECTOR_COLORS = ['#35c4b4', '#6ba8e8', '#b28be2', '#e78caf', '#ef9b64', '#d8bf57', '#48b6d2', '#7bc48e', '#dd7a62', '#8f9de5', '#c68e58', '#6ab6a1'];
 type LessonStep = 0 | 1 | 2 | 3 | 4;
 type AreaAnswer = 'same' | 'different' | null;
 type SpeedAnswer = 'near-faster' | 'far-faster' | 'same' | null;
@@ -76,18 +77,19 @@ function makeOrbit(eccentricity = DEMO_ECCENTRICITY) {
   };
 }
 
-function AreaComparisonFigure({ orbit, firstIndex, secondIndex, interval, firstAreaAU2, secondAreaAU2 }: {
+function AreaComparisonFigure({ orbit, firstIndex, secondIndex, interval, firstAreaAU2, secondAreaAU2, showLaw }: {
   orbit: ReturnType<typeof makeOrbit>;
   firstIndex: number;
   secondIndex: number;
   interval: number;
   firstAreaAU2: number;
   secondAreaAU2: number;
+  showLaw: boolean;
 }) {
   const days = interval / SECONDS_PER_DAY;
   const comparisons = [
-    { index: firstIndex, name: firstIndex === 0 ? '근일점 부근' : `${firstIndex + 1}번 영역`, color: '#35c4b4', area: firstAreaAU2 },
-    { index: secondIndex, name: secondIndex === 6 ? '원일점 부근' : `${secondIndex + 1}번 영역`, color: '#48b6d2', area: secondAreaAU2 },
+    { index: firstIndex, name: firstIndex === 0 ? '근일점 부근' : firstIndex === 6 ? '원일점 부근' : `${firstIndex + 1}번 영역`, color: SECTOR_COLORS[firstIndex], area: firstAreaAU2 },
+    { index: secondIndex, name: secondIndex === 0 ? '근일점 부근' : secondIndex === 6 ? '원일점 부근' : `${secondIndex + 1}번 영역`, color: SECTOR_COLORS[secondIndex], area: secondAreaAU2 },
   ];
   return <section className="l2-sector-comparison" aria-label="선택한 두 실제 궤도 영역 비교">
     <div className="l2-sector-comparison-heading"><div><b>두 영역을 같은 축척으로 보기</b><span>그림은 궤도에서 쓸린 실제 부채꼴 모양을 유지합니다.</span></div><span>같은 확대 배율</span></div>
@@ -110,7 +112,11 @@ function AreaComparisonFigure({ orbit, firstIndex, secondIndex, interval, firstA
         <details><summary>정확한 계산값 보기</summary><p>구간 시간 {days.toFixed(3)}일 · 면적 {area.toFixed(8)} AU²</p></details>
       </article>;
     })}</div>
-    <div className="l2-equal-area-callout"><span>두 실제 부채꼴의 면적</span><b>{firstAreaAU2.toFixed(3)} AU² = {secondAreaAU2.toFixed(3)} AU²</b><small>같은 시간 동안 쓸린 면적은 같습니다. 부채꼴 모양과 태양에서의 거리는 서로 다릅니다.</small></div>
+    <div className="l2-sector-area-chart" role="img" aria-label={`면적 비교 막대 그래프. ${firstIndex + 1}번 영역 ${firstAreaAU2.toFixed(3)} 제곱 AU, ${secondIndex + 1}번 영역 ${secondAreaAU2.toFixed(3)} 제곱 AU`}>
+      <b>두 영역의 면적 비교</b>
+      {[{ index: firstIndex, name: comparisons[0].name, color: comparisons[0].color, area: firstAreaAU2 }, { index: secondIndex, name: comparisons[1].name, color: comparisons[1].color, area: secondAreaAU2 }].map((item) => <div className="l2-area-bar-row" key={item.index}><span>{item.index + 1}번 · {item.name}</span><div className="l2-area-bar-track"><i style={{ width: `${(item.area / Math.max(firstAreaAU2, secondAreaAU2)) * 100}%`, background: item.color }}/></div><strong>{item.area.toFixed(3)} AU²</strong></div>)}
+    </div>
+    {showLaw && <div className="l2-equal-area-callout"><span>케플러 제2법칙</span><b>{firstAreaAU2.toFixed(3)} AU² = {secondAreaAU2.toFixed(3)} AU²</b><small>모양이 다른 부채꼴이어도 같은 시간 동안 쓸린 면적은 같습니다.</small></div>}
   </section>;
 }
 
@@ -125,10 +131,10 @@ function AreaInvestigation({ answer, onAnswer, pairReady, note, onNoteChange, on
   return <section className="l2-activity">
     <div className="l2-heading"><span>전개 1 · 15분</span><h2>같은 시간, 같은 면적일까요?</h2></div>
     <p><b>목표</b> 근일점과 원일점 부근에서 같은 시간 동안 쓸린 면적을 비교합니다.</p>
-    <p>재생을 눌러 행성이 움직이고 같은 시간 간격의 영역이 차례로 채워지는 모습을 관찰하세요. 1번과 7번 영역을 눌러 근일점·원일점 부근을 비교합니다.</p>
-    <div className="l2-observe-prompts"><span>관찰 순서</span><ol><li>12개의 동일한 시간 구간이 차례대로 나타나도록 재생합니다.</li><li>1번과 7번 영역을 선택해 서로 다른 부채꼴 모양을 살펴봅니다.</li><li>두 영역의 넓이가 어떤 관계인지 예상해 답합니다.</li></ol></div>
-    {!pairReady && <p className="l2-selection-hint">재생을 계속해 7번 영역까지 만든 뒤 1번과 7번을 선택하세요.</p>}
-    <fieldset className="l2-options" disabled={!pairReady}><legend>모양은 다를 수 있어도 같은 시간 동안 쓸린 두 면적은 어떠할까요?</legend>
+    <p>재생해 12개 영역이 차례로 쌓이는 모습을 먼저 보세요. 두 영역을 고르면 아래에 실제 모양과 면적 막대그래프가 나타납니다. 근일점 부근 1번과 원일점 부근 7번을 비교하면 모양 차이가 잘 보입니다.</p>
+    <div className="l2-observe-prompts"><span>관찰 순서</span><ol><li>12개 영역이 모두 나타나도록 재생·배속을 조절합니다.</li><li>비교할 두 영역을 선택하고 부채꼴 모양과 면적 막대를 살펴봅니다.</li><li>관찰한 뒤 두 영역의 넓이가 어떤 관계인지 답합니다.</li></ol></div>
+    {!pairReady && <p className="l2-selection-hint">먼저 두 영역을 선택하세요. 번호를 바꾸면 비교 화면도 바로 갱신됩니다.</p>}
+    <fieldset className="l2-options" disabled={!pairReady}><legend>두 영역의 모양은 다를 수 있지만, 면적은 어떤 관계인가요?</legend>
       <label><input type="radio" name="area" checked={answer === 'same'} onChange={() => onAnswer('same')}/> 같다</label>
       <label><input type="radio" name="area" checked={answer === 'different'} onChange={() => onAnswer('different')}/> 다르다</label>
     </fieldset>
@@ -204,10 +210,13 @@ function AreaSimulation({ orbit, eccentricity, onEccentricityChange, playing, se
   const currentX = orbit.focusX - current.positionXM * orbit.scale;
   const currentY = orbit.cy + current.positionYM * orbit.scale;
   const days = interval / SECONDS_PER_DAY;
-  const palette = ['#35c4b4', '#6ba8e8', '#b28be2', '#e78caf', '#ef9b64', '#d8bf57', '#48b6d2', '#7bc48e', '#dd7a62', '#8f9de5', '#c68e58', '#6ab6a1'];
-  const comparison = revealAreaResult && selectedSegments.includes(0) && selectedSegments.includes(6) ? {
-    firstAreaAU2: sweptAreaBetweenTimes(orbit.physical, 0, interval) / ASTRONOMICAL_UNIT_M ** 2,
-    secondAreaAU2: sweptAreaBetweenTimes(orbit.physical, 6 * interval, 7 * interval) / ASTRONOMICAL_UNIT_M ** 2,
+  const palette = SECTOR_COLORS;
+  const comparisonIndices = [...selectedSegments].sort((a, b) => a - b);
+  const comparison = comparisonIndices.length === 2 ? {
+    firstIndex: comparisonIndices[0],
+    secondIndex: comparisonIndices[1],
+    firstAreaAU2: sweptAreaBetweenTimes(orbit.physical, comparisonIndices[0] * interval, (comparisonIndices[0] + 1) * interval) / ASTRONOMICAL_UNIT_M ** 2,
+    secondAreaAU2: sweptAreaBetweenTimes(orbit.physical, comparisonIndices[1] * interval, (comparisonIndices[1] + 1) * interval) / ASTRONOMICAL_UNIT_M ** 2,
   } : null;
   const periReady = completeCount >= 1;
   const apoReady = completeCount >= 7;
@@ -244,7 +253,7 @@ function AreaSimulation({ orbit, eccentricity, onEccentricityChange, playing, se
       <text x="350" y="456" textAnchor="middle" className="l2-svg-hint">번호 영역을 선택해 비교하세요 · 각 영역 경계는 케플러 방정식으로 같은 시간 간격에 계산됩니다.</text>
     </svg>
     <div className="l2-sector-status" aria-live="polite"><b>누적된 영역 {completeCount}/{SECTOR_COUNT}</b><span>{stage === 'area' ? comparison ? '두 영역을 같은 축척으로 나란히 비교합니다.' : `선택한 영역: ${selectedSegments.length}/2 · 1번은 근일점, 7번은 원일점 부근` : speedArcsReady ? revealSpeedResult ? `두 구간의 이동 시간은 약 ${Math.round(days)}일 · 1번 ${formatDistance(periDistance)}백만 km · 7번 ${formatDistance(apoDistance)}백만 km` : `청록색·주황색 선의 길이를 비교하세요. 이동 시간은 약 ${Math.round(days)}일이며, 수치 결과는 답변 후 확인합니다.` : '재생하여 1번과 7번 구간이 나타나도록 하세요.'}</span></div>
-    {comparison && <AreaComparisonFigure orbit={orbit} firstIndex={0} secondIndex={6} interval={interval} firstAreaAU2={comparison.firstAreaAU2} secondAreaAU2={comparison.secondAreaAU2}/>}
+    {comparison && <AreaComparisonFigure orbit={orbit} firstIndex={comparison.firstIndex} secondIndex={comparison.secondIndex} interval={interval} firstAreaAU2={comparison.firstAreaAU2} secondAreaAU2={comparison.secondAreaAU2} showLaw={revealAreaResult}/>}
     {stage === 'speed' && <div className="l2-speed-arc-key"><span><i className="near"/>1번 · 근일점 부근 이동 거리</span><span><i className="far"/>7번 · 원일점 부근 이동 거리</span></div>}
     <div className="l2-playback">
       <div className="l2-play-buttons"><button onClick={() => { if (elapsedSeconds >= ORBIT_PERIOD_SECONDS) setElapsedSeconds(0); setPlaying(!playing); }}>{playing ? '일시정지' : '재생'}</button><button onClick={onReset}>초기화</button></div>
@@ -430,9 +439,9 @@ export default function KeplerLawsLesson() {
     <section className="l2-layout">
       <div className="l2-content">
         <StepProgress step={step}/>
-        {(step === 1 || step === 2) && <AreaSimulation orbit={orbit} eccentricity={demoEccentricity} onEccentricityChange={(value) => { setDemoEccentricity(value); setPlaying(false); setElapsedSeconds(0); setSelectedSegments([]); setAreaAnswer(null); setSpeedAnswer(null); }} playing={playing} setPlaying={setPlaying} elapsedSeconds={elapsedSeconds} setElapsedSeconds={setElapsedSeconds} speedFactor={speedFactor} setSpeedFactor={setSpeedFactor} selectedSegments={selectedSegments} onToggleSegment={(index) => { setSelectedSegments((current) => current.includes(index) ? current.filter((item) => item !== index) : current.length < 2 ? [...current, index] : [current[1], index]); setAreaAnswer(null); }} onReset={() => { setPlaying(false); setElapsedSeconds(0); setSelectedSegments([]); setAreaAnswer(null); setSpeedAnswer(null); }} revealAreaResult={step === 1 && Boolean(areaAnswer && selectedSegments.includes(0) && selectedSegments.includes(6))} revealSpeedResult={step === 2 && speedAnswer !== null} stage={step === 1 ? 'area' : 'speed'}/ >}
+        {(step === 1 || step === 2) && <AreaSimulation orbit={orbit} eccentricity={demoEccentricity} onEccentricityChange={(value) => { setDemoEccentricity(value); setPlaying(false); setElapsedSeconds(0); setSelectedSegments([]); setAreaAnswer(null); setSpeedAnswer(null); }} playing={playing} setPlaying={setPlaying} elapsedSeconds={elapsedSeconds} setElapsedSeconds={setElapsedSeconds} speedFactor={speedFactor} setSpeedFactor={setSpeedFactor} selectedSegments={selectedSegments} onToggleSegment={(index) => { setSelectedSegments((current) => current.includes(index) ? current.filter((item) => item !== index) : current.length < 2 ? [...current, index] : [current[1], index]); setAreaAnswer(null); }} onReset={() => { setPlaying(false); setElapsedSeconds(0); setSelectedSegments([]); setAreaAnswer(null); setSpeedAnswer(null); }} revealAreaResult={step === 1 && areaAnswer !== null && selectedSegments.length === 2} revealSpeedResult={step === 2 && speedAnswer !== null} stage={step === 1 ? 'area' : 'speed'}/ >}
         {step === 0 && <section className="l2-activity"><div className="l2-heading"><span>도입 · 5분</span><h2>행성의 속도는 늘 같을까요?</h2></div><p><b>목표</b> 관찰을 시작하기 전에 자신의 예상을 남깁니다.</p><p>행성은 태양 주위를 공전할 때 항상 일정한 속도로 움직일까요? 태양에서의 거리에 따라 어떻게 달라질지 생각해 보세요.</p><fieldset className="l2-options"><legend>나의 예상</legend><label><input type="radio" name="prediction" checked={prediction === 'constant'} onChange={() => setPrediction('constant')}/> 공전하는 동안 속도는 거의 일정할 것 같다</label><label><input type="radio" name="prediction" checked={prediction === 'changes'} onChange={() => setPrediction('changes')}/> 태양과의 거리에 따라 달라질 것 같다</label><label><input type="radio" name="prediction" checked={prediction === 'unsure'} onChange={() => setPrediction('unsure')}/> 아직 잘 모르겠다</label></fieldset>{prediction && <Feedback>예상을 기록했습니다. 시뮬레이션을 관찰한 뒤 자신의 생각을 비교해 보세요.</Feedback>}<label className="l2-reflection">예상한 까닭<textarea rows={2} value={notes.prediction} onChange={(event) => setNotes({ ...notes, prediction: event.target.value })} placeholder="지금 떠오르는 생각을 짧게 적어 보세요."/></label><button className="l2-next" disabled={!prediction} onClick={() => setStep(1)}>면적 비교 시작 <span>→</span></button></section>}
-        {step === 1 && <AreaInvestigation answer={areaAnswer} onAnswer={setAreaAnswer} pairReady={selectedSegments.includes(0) && selectedSegments.includes(6)} note={notes.area} onNoteChange={(value) => setNotes({ ...notes, area: value })} onNext={() => { setPlaying(false); setStep(2); }}/ >}
+        {step === 1 && <AreaInvestigation answer={areaAnswer} onAnswer={setAreaAnswer} pairReady={selectedSegments.length === 2} note={notes.area} onNoteChange={(value) => setNotes({ ...notes, area: value })} onNext={() => { setPlaying(false); setStep(2); }}/ >}
         {step === 2 && <SpeedInvestigation eccentricity={demoEccentricity} durationDays={comparisonDays} periInstant={periVelocity} apoInstant={apoVelocity} periDistance={periDistance} apoDistance={apoDistance} periAverage={periAverageSpeed} apoAverage={apoAverageSpeed} answer={speedAnswer} onAnswer={setSpeedAnswer} note={notes.speed} onNoteChange={(value) => setNotes({ ...notes, speed: value })} onNext={() => setStep(3)}/>}
         {step === 3 && <PlanetDataInvestigation selectedId={selectedPlanet} onSelect={setSelectedPlanet} periodAnswer={periodAnswer} onPeriodAnswer={setPeriodAnswer} ratioAnswer={thirdAnswer} onRatioAnswer={setThirdAnswer} note={notes.third} onNoteChange={(value) => setNotes({ ...notes, third: value })} onNext={() => setStep(4)}/>}
         {step === 4 && !completed && <section className="l2-activity"><div className="l2-heading"><span>정리 · 5분</span><h2>관찰한 내용을 법칙에 연결해요</h2></div><p><b>목표</b> 케플러 세 법칙이 행성 운동의 어떤 특징을 설명하는지 구분합니다.</p><div className="l2-match-list"><label>행성 궤도는 타원이며 태양은 한 초점에 있다<select value={summary.first} onChange={(event) => setSummary({ ...summary, first: event.target.value })}><option value="">법칙 선택</option><option value="1">제1법칙</option><option value="2">제2법칙</option><option value="3">제3법칙</option></select></label><label>같은 시간 동안 태양-행성 선분이 같은 면적을 쓸고 간다<select value={summary.second} onChange={(event) => setSummary({ ...summary, second: event.target.value })}><option value="">법칙 선택</option><option value="1">제1법칙</option><option value="2">제2법칙</option><option value="3">제3법칙</option></select></label><label>공전주기의 제곱은 긴반지름의 세제곱에 비례한다<select value={summary.third} onChange={(event) => setSummary({ ...summary, third: event.target.value })}><option value="">법칙 선택</option><option value="1">제1법칙</option><option value="2">제2법칙</option><option value="3">제3법칙</option></select></label></div><button className="l2-check" disabled={!summary.first || !summary.second || !summary.third} onClick={() => setSummarySubmitted(true)}>정리 확인</button>{summarySubmitted && <Feedback correct={summary.first === '1' && summary.second === '2' && summary.third === '3'}>{summary.first === '1' && summary.second === '2' && summary.third === '3' ? '세 법칙을 모두 알맞게 연결했어요. 다음 차시에는 이 원리를 이용해 지구에서 화성으로 가는 이상적인 탐사선 궤도를 살펴봅니다.' : '각 문장에서 궤도의 모양, 같은 시간의 면적, 주기와 크기 중 무엇을 설명하는지 다시 생각해 보세요.'}</Feedback>}<label className="l2-reflection">오늘의 한 줄 정리<textarea rows={2} value={notes.summary} onChange={(event) => setNotes({ ...notes, summary: event.target.value })} placeholder="제2법칙과 제3법칙을 한 문장씩 정리해 보세요."/></label><button className="l2-next" disabled={!summarySubmitted || summary.first !== '1' || summary.second !== '2' || summary.third !== '3'} onClick={() => setCompleted(true)}>2차시 완료 <span>✓</span></button></section>}
