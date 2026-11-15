@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 
 const STORAGE_ROOT = 'kepler-mars-learning:v1';
+const resetEpoch = new Map<string, number>();
 
 function storageKey(scope: string, field: string): string {
   return `${STORAGE_ROOT}:${scope}:${field}`;
@@ -36,29 +37,40 @@ export function useLessonStoredState<T>(
 ): [T, Dispatch<SetStateAction<T>>] {
   const key = storageKey(lessonId === 'app' ? 'app' : `lesson-${lessonId}`, field);
   const fallbackJSON = JSON.stringify(fallback);
+  const scope = lessonId === 'app' ? 'app' : `lesson-${lessonId}`;
+  const epoch = resetEpoch.get(scope) ?? 0;
   const [value, setValue] = useState<T>(() => readStoredValue(key, fallback, isValid));
   const currentValue = useRef(value);
   currentValue.current = value;
 
   useEffect(() => {
-    const timeout = window.setTimeout(() => writeStoredValue(key, value, fallbackJSON), 120);
+    const timeout = window.setTimeout(() => {
+      if ((resetEpoch.get(scope) ?? 0) === epoch) writeStoredValue(key, value, fallbackJSON);
+    }, 120);
     return () => {
       window.clearTimeout(timeout);
-      writeStoredValue(key, currentValue.current, fallbackJSON);
     };
-  }, [key, value, fallbackJSON]);
+  }, [key, value, fallbackJSON, scope, epoch]);
 
   useEffect(() => {
-    const flush = () => writeStoredValue(key, currentValue.current, fallbackJSON);
+    const flush = () => {
+      if ((resetEpoch.get(scope) ?? 0) === epoch) writeStoredValue(key, currentValue.current, fallbackJSON);
+    };
     window.addEventListener('pagehide', flush);
     return () => window.removeEventListener('pagehide', flush);
-  }, [key, fallbackJSON]);
+  }, [key, fallbackJSON, scope, epoch]);
+
+  useEffect(() => () => {
+    if ((resetEpoch.get(scope) ?? 0) === epoch) writeStoredValue(key, currentValue.current, fallbackJSON);
+  }, [key, fallbackJSON, scope, epoch]);
 
   return [value, setValue];
 }
 
 export function clearLessonStoredState(lessonId: string | 'app'): void {
-  const prefix = `${STORAGE_ROOT}:${lessonId === 'app' ? 'app' : `lesson-${lessonId}`}:`;
+  const scope = lessonId === 'app' ? 'app' : `lesson-${lessonId}`;
+  resetEpoch.set(scope, (resetEpoch.get(scope) ?? 0) + 1);
+  const prefix = `${STORAGE_ROOT}:${scope}:`;
   try {
     const keys = Array.from({ length: window.localStorage.length }, (_, index) => window.localStorage.key(index));
     keys.forEach((key) => { if (key?.startsWith(prefix)) window.localStorage.removeItem(key); });
