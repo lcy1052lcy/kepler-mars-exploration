@@ -42,7 +42,10 @@ export function useLessonStoredState<T>(
 
   useEffect(() => {
     const timeout = window.setTimeout(() => writeStoredValue(key, value, fallbackJSON), 120);
-    return () => window.clearTimeout(timeout);
+    return () => {
+      window.clearTimeout(timeout);
+      writeStoredValue(key, currentValue.current, fallbackJSON);
+    };
   }, [key, value, fallbackJSON]);
 
   useEffect(() => {
@@ -62,6 +65,26 @@ export function clearLessonStoredState(lessonId: string | 'app'): void {
   } catch {
     // Resetting visible lesson state must still work if storage is unavailable.
   }
+}
+
+/** Read a lesson's existing localStorage fields without changing or resetting them. */
+export function readLessonStoredSnapshot(lessonId: string): Record<string, unknown> {
+  const prefix = `${STORAGE_ROOT}:lesson-${lessonId}:`;
+  const snapshot: Record<string, unknown> = {};
+  try {
+    for (let index = 0; index < window.localStorage.length; index += 1) {
+      const key = window.localStorage.key(index);
+      if (!key?.startsWith(prefix)) continue;
+      try {
+        snapshot[key.slice(prefix.length)] = JSON.parse(window.localStorage.getItem(key) ?? 'null');
+      } catch {
+        // Ignore only the malformed field and keep other saved lesson answers available.
+      }
+    }
+  } catch {
+    // Return an empty snapshot if localStorage is unavailable.
+  }
+  return snapshot;
 }
 
 export function isIntegerBetween(value: unknown, min: number, max: number): value is number {

@@ -15,6 +15,7 @@ const sourcePaths = [
   path.resolve('src/content/planetEccentricities.ts'),
   path.resolve('src/ui/lessonOneSimulation.ts'),
   path.resolve('src/physics/transfers.ts'),
+  path.resolve('src/physics/encounter.ts'),
   path.resolve('src/physics/index.ts'),
   path.resolve('src/features/lesson-03/orbitAnimation.ts'),
   path.resolve('src/features/lesson-03/calculationValidation.ts'),
@@ -35,6 +36,7 @@ const { PLANET_ORBIT_DATA } = require(path.join(tempDirectory, 'planetOrbitData.
 const { PLANET_ECCENTRICITIES } = require(path.join(tempDirectory, 'planetEccentricities.cjs'));
 const { lessonOneSimulationState } = require(path.join(tempDirectory, 'lessonOneSimulation.cjs'));
 const { ellipseFromApsisDistancesAU, hohmannTransfer } = require(path.join(tempDirectory, 'transfers.cjs'));
+const { outboundCircleCrossing, evaluateMarsEncounter, circularPlanetAngle } = require(path.join(tempDirectory, 'encounter.cjs'));
 const { ellipseOrbitPath, transferFrameAtProgress, transferTrailPath } = require(path.join(tempDirectory, 'orbitAnimation.cjs'));
 const { isRoundedNumericAnswer, isRoundedNumericAnswerAmong, transferCalculationValues } = require(path.join(tempDirectory, 'calculationValidation.cjs'));
 const close = (actual, expected, relativeTolerance = 1e-10) => assert.ok(Math.abs(actual - expected) / Math.abs(expected) < relativeTolerance, `${actual} is not within tolerance of ${expected}`);
@@ -77,6 +79,32 @@ test('Cartesian state coordinates are consistent with the orbital radius', () =>
   const orbit = { semiMajorAxisM: ASTRONOMICAL_UNIT_M, eccentricity: 0.4, gravitationalParameterM3S2: SOLAR_MU_M3_S2 };
   const state = stateAtTime(orbit, orbitalPeriodSeconds(orbit) * 0.13);
   close(Math.hypot(state.positionXM, state.positionYM), state.radiusM);
+});
+test('Mars-circle crossing is computed from the actual ellipse, not apoapsis comparison alone', () => {
+  const below = ellipseFromApsisDistancesAU(1, 1.520);
+  const tangent = ellipseFromApsisDistancesAU(1, 1.524);
+  const above = ellipseFromApsisDistancesAU(1, 1.531);
+  assert.equal(outboundCircleCrossing(below, 1.524), null);
+  const tangentCrossing = outboundCircleCrossing(tangent, 1.524);
+  const aboveCrossing = outboundCircleCrossing(above, 1.524);
+  assert.ok(tangentCrossing);
+  assert.ok(aboveCrossing);
+  close(tangentCrossing.elapsedSeconds, tangent.periodSeconds / 2, 1e-8);
+  assert.ok(aboveCrossing.elapsedSeconds < above.periodSeconds / 2);
+  assert.ok(aboveCrossing.trueAnomalyRad < Math.PI);
+});
+test('Mars phase changes encounter result at the common probe crossing time', () => {
+  const model = ellipseFromApsisDistancesAU(1, 1.524);
+  const notAligned = evaluateMarsEncounter(model, 0);
+  assert.equal(notAligned.status, 'different-position');
+  const crossing = outboundCircleCrossing(model, 1.524);
+  const probe = stateAtTime(model.orbit, crossing.elapsedSeconds);
+  const probeAngle = Math.atan2(probe.positionYM, probe.positionXM);
+  const alignedStart = probeAngle - crossing.elapsedSeconds / (686.98 * 86400) * 2 * Math.PI;
+  const aligned = evaluateMarsEncounter(model, alignedStart);
+  assert.equal(aligned.status, 'same-position');
+  assert.ok(aligned.separationAU < 1e-8);
+  assert.ok(Number.isFinite(circularPlanetAngle(0, crossing.elapsedSeconds, 686.98)));
 });
 test('equal elapsed times sweep equal areas near perihelion and aphelion', () => {
   const orbit = { semiMajorAxisM: ASTRONOMICAL_UNIT_M, eccentricity: 0.65, gravitationalParameterM3S2: SOLAR_MU_M3_S2 };

@@ -4,6 +4,7 @@ import { PLANET_ECCENTRICITIES, PLANET_ECCENTRICITY_SOURCE } from '../content/pl
 import { ASTRONOMICAL_UNIT_M, ellipseGeometry } from '../physics';
 import KeplerLawsLesson from '../features/lesson-02/KeplerLawsLesson';
 import KeplerMarsTransferLesson from '../features/lesson-03/KeplerMarsTransferLesson';
+import MarsEncounterLesson from '../features/lesson-04/MarsEncounterLesson';
 import LessonCompletion from './LessonCompletion';
 import LessonStepNavigation from './LessonStepNavigation';
 import { clearLessonStoredState, isBoolean, isIndexList, isIntegerBetween, isNumberBetween, isString, useLessonStoredState } from './lessonProgress';
@@ -164,7 +165,7 @@ export default function App() {
       <nav className="lesson-tabs" aria-label="차시 이동">{lessons.map((item) => <button key={item.id} className={selectedLesson === item.id ? 'active' : ''} onClick={() => setSelectedLesson(item.id)}><span>{item.id}차시</span><small>{['타원 궤도', '속도와 주기', '화성 전이', '실제 탐사'][item.id - 1]}</small></button>)}</nav>
     </header>
 
-    {selectedLesson === 2 ? <KeplerLawsLesson /> : selectedLesson === 3 ? <KeplerMarsTransferLesson /> : selectedLesson === 4 ? <main className="lesson-main"><section className="lesson-intro"><div className="lesson-number">4차시</div><h1>{lesson.title}</h1><p>이 차시는 다음 개발 단계에서 구현합니다.</p></section></main> : <main className="lesson-main">
+    {selectedLesson === 2 ? <KeplerLawsLesson /> : selectedLesson === 3 ? <KeplerMarsTransferLesson /> : selectedLesson === 4 ? <MarsEncounterLesson onReturnToLesson3={() => setSelectedLesson(3)}/> : <main className="lesson-main">
       <section className="lesson-intro">
         <div className="lesson-number">1차시 · 케플러 제1법칙</div>
         <h1>{lesson.title}</h1>
