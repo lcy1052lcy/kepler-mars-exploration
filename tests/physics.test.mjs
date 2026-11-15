@@ -15,10 +15,12 @@ const sourcePaths = [
   path.resolve('src/content/planetEccentricities.ts'),
   path.resolve('src/ui/lessonOneSimulation.ts'),
   path.resolve('src/physics/transfers.ts'),
+  path.resolve('src/features/lesson-03/orbitAnimation.ts'),
 ];
 const tempDirectory = await fs.mkdtemp(path.join(os.tmpdir(), 'kepler-physics-'));
 for (const file of sourcePaths) {
-  const source = await fs.readFile(file, 'utf8');
+  let source = await fs.readFile(file, 'utf8');
+  if (file.endsWith('orbitAnimation.ts')) source = source.replace("'../../physics'", "'./kepler.cjs'");
   const output = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
   await fs.writeFile(path.join(tempDirectory, path.basename(file, '.ts') + '.cjs'), output);
   // Preserve relative TypeScript imports in transpiled output (e.g. require('./constants')).
@@ -31,6 +33,7 @@ const { PLANET_ORBIT_DATA } = require(path.join(tempDirectory, 'planetOrbitData.
 const { PLANET_ECCENTRICITIES } = require(path.join(tempDirectory, 'planetEccentricities.cjs'));
 const { lessonOneSimulationState } = require(path.join(tempDirectory, 'lessonOneSimulation.cjs'));
 const { ellipseFromApsisDistancesAU, hohmannTransfer } = require(path.join(tempDirectory, 'transfers.cjs'));
+const { transferFrameAtProgress, transferTrailPath } = require(path.join(tempDirectory, 'orbitAnimation.cjs'));
 const close = (actual, expected, relativeTolerance = 1e-10) => assert.ok(Math.abs(actual - expected) / Math.abs(expected) < relativeTolerance, `${actual} is not within tolerance of ${expected}`);
 
 test('circle has equal radii and coincident foci', () => {
@@ -189,6 +192,23 @@ test('animation progress maps to changing Kepler positions along the transfer ha
   }
   close(frames[0].radiusM / ASTRONOMICAL_UNIT_M, 1, 1e-12);
   close(frames[4].radiusM / ASTRONOMICAL_UNIT_M, 1.524, 1e-12);
+});
+
+test('the SVG animation trail changes coordinates and extends as the probe advances', () => {
+  const transfer = hohmannTransfer();
+  const startPath = transferTrailPath(transfer, 0);
+  const middlePath = transferTrailPath(transfer, 0.5);
+  const arrivalPath = transferTrailPath(transfer, 1);
+  assert.notEqual(startPath, middlePath);
+  assert.notEqual(middlePath, arrivalPath);
+  assert.ok((middlePath.match(/ L /g) ?? []).length > (startPath.match(/ L /g) ?? []).length);
+  assert.ok((arrivalPath.match(/ L /g) ?? []).length > (middlePath.match(/ L /g) ?? []).length);
+  const startFrame = transferFrameAtProgress(transfer, 0);
+  const middleFrame = transferFrameAtProgress(transfer, 0.5);
+  const arrivalFrame = transferFrameAtProgress(transfer, 1);
+  assert.ok(startFrame.state.positionXM > 0);
+  assert.ok(middleFrame.state.positionXM > arrivalFrame.state.positionXM);
+  close(arrivalFrame.state.radiusM / ASTRONOMICAL_UNIT_M, 1.524, 1e-12);
 });
 
 test('ellipse from arbitrary apsides rejects invalid transfer distances', () => {
