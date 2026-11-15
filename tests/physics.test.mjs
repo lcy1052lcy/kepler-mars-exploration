@@ -15,12 +15,13 @@ const sourcePaths = [
   path.resolve('src/content/planetEccentricities.ts'),
   path.resolve('src/ui/lessonOneSimulation.ts'),
   path.resolve('src/physics/transfers.ts'),
+  path.resolve('src/physics/index.ts'),
   path.resolve('src/features/lesson-03/orbitAnimation.ts'),
 ];
 const tempDirectory = await fs.mkdtemp(path.join(os.tmpdir(), 'kepler-physics-'));
 for (const file of sourcePaths) {
   let source = await fs.readFile(file, 'utf8');
-  if (file.endsWith('orbitAnimation.ts')) source = source.replace("'../../physics'", "'./kepler.cjs'");
+  if (file.endsWith('orbitAnimation.ts')) source = source.replace("'../../physics'", "'./index.cjs'");
   const output = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
   await fs.writeFile(path.join(tempDirectory, path.basename(file, '.ts') + '.cjs'), output);
   // Preserve relative TypeScript imports in transpiled output (e.g. require('./constants')).
@@ -33,7 +34,7 @@ const { PLANET_ORBIT_DATA } = require(path.join(tempDirectory, 'planetOrbitData.
 const { PLANET_ECCENTRICITIES } = require(path.join(tempDirectory, 'planetEccentricities.cjs'));
 const { lessonOneSimulationState } = require(path.join(tempDirectory, 'lessonOneSimulation.cjs'));
 const { ellipseFromApsisDistancesAU, hohmannTransfer } = require(path.join(tempDirectory, 'transfers.cjs'));
-const { transferFrameAtProgress, transferTrailPath } = require(path.join(tempDirectory, 'orbitAnimation.cjs'));
+const { ellipseOrbitPath, transferFrameAtProgress, transferTrailPath } = require(path.join(tempDirectory, 'orbitAnimation.cjs'));
 const close = (actual, expected, relativeTolerance = 1e-10) => assert.ok(Math.abs(actual - expected) / Math.abs(expected) < relativeTolerance, `${actual} is not within tolerance of ${expected}`);
 
 test('circle has equal radii and coincident foci', () => {
@@ -209,6 +210,40 @@ test('the SVG animation trail changes coordinates and extends as the probe advan
   assert.ok(startFrame.state.positionXM > 0);
   assert.ok(middleFrame.state.positionXM > arrivalFrame.state.positionXM);
   close(arrivalFrame.state.radiusM / ASTRONOMICAL_UNIT_M, 1.524, 1e-12);
+});
+
+test('transfer ellipse, trail, and probe coordinates stay visible inside the lesson SVG viewBox', () => {
+  const transfer = hohmannTransfer();
+  const inViewBox = (x, y) => x >= 0 && x <= 720 && y >= 0 && y <= 500;
+  const pathPoints = (pathData) => [...pathData.matchAll(/[-+]?(?:\d+\.?\d*|\.\d+)(?:e[-+]?\d+)?/gi)]
+    .map((match) => Number(match[0]));
+
+  const fullEllipsePath = ellipseOrbitPath(transfer);
+  assert.equal(typeof fullEllipsePath, 'string');
+  const fullEllipseCoordinates = pathPoints(fullEllipsePath);
+  assert.ok(fullEllipseCoordinates.length > 10, fullEllipsePath.slice(0, 120));
+  for (let index = 0; index < fullEllipseCoordinates.length; index += 2) {
+    assert.ok(inViewBox(fullEllipseCoordinates[index], fullEllipseCoordinates[index + 1]), 'full transfer ellipse should remain inside the SVG viewBox');
+  }
+
+  const renderedFrames = [0, 0.25, 0.5, 0.75, 1].map((progress) => {
+    const frame = transferFrameAtProgress(transfer, progress);
+    assert.ok(inViewBox(frame.x, frame.y), `probe marker at ${progress * 100}% should remain inside the SVG viewBox`);
+    return frame;
+  });
+  for (let index = 1; index < renderedFrames.length; index += 1) {
+    assert.notDeepEqual([renderedFrames[index].x, renderedFrames[index].y], [renderedFrames[index - 1].x, renderedFrames[index - 1].y]);
+  }
+  close(renderedFrames[0].x, 478, 1e-12);
+  close(renderedFrames[4].x, 360 - 1.524 * 118, 1e-12);
+
+  for (const progress of [0, 0.25, 0.5, 0.75, 1]) {
+    const trailCoordinates = pathPoints(transferTrailPath(transfer, progress));
+    assert.ok(trailCoordinates.length >= 4);
+    for (let index = 0; index < trailCoordinates.length; index += 2) {
+      assert.ok(inViewBox(trailCoordinates[index], trailCoordinates[index + 1]), `trail at ${progress * 100}% should remain inside the SVG viewBox`);
+    }
+  }
 });
 
 test('ellipse from arbitrary apsides rejects invalid transfer distances', () => {

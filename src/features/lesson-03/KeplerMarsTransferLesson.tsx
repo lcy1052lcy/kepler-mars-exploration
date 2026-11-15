@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ASTRONOMICAL_UNIT_M, distanceTraveledBetweenTimes, stateAtTime, stateAtTrueAnomaly } from '../../physics';
+import { ASTRONOMICAL_UNIT_M, distanceTraveledBetweenTimes, stateAtTime } from '../../physics';
 import { ellipseFromApsisDistancesAU, hohmannTransfer, type ApsisOrbit } from '../../physics/transfers';
 import { isConstructionReady } from './constructionReadiness';
-import { transferFrameAtProgress, transferTrailPath } from './orbitAnimation';
+import { ellipseOrbitPath, orbitalStateSvgPoint, transferFrameAtProgress, transferTrailPath } from './orbitAnimation';
 import LessonCompletion from '../../ui/LessonCompletion';
 import LessonStepNavigation from '../../ui/LessonStepNavigation';
 import { clearLessonStoredState, isBoolean, isIndexList, isIntegerBetween, isNumberBetween, isString, isStringRecord, useLessonStoredState } from '../../ui/lessonProgress';
@@ -34,7 +34,7 @@ function Feedback({ correct, children }: { correct: boolean | undefined; childre
 
 function svgPoint(model: ApsisOrbit, seconds: number, cx = 360, cy = 250, scale = 118): [number, number] {
   const state = stateAtTime(model.orbit, seconds);
-  return [cx + state.positionXM * scale, cy - state.positionYM * scale];
+  return orbitalStateSvgPoint(state, cx, cy, scale);
 }
 
 function timedPath(model: ApsisOrbit, start: number, end: number, samples = 240): string {
@@ -43,14 +43,6 @@ function timedPath(model: ApsisOrbit, start: number, end: number, samples = 240)
     const [x, y] = svgPoint(model, start + ((end - start) * index) / count);
     return `${index === 0 ? 'M' : 'L'} ${x.toFixed(2)} ${y.toFixed(2)}`;
   }).join(' ');
-}
-
-function ellipsePath(model: ApsisOrbit, cx = 360, cy = 250, scale = 118): string {
-  const points = Array.from({ length: 241 }, (_, index) => {
-    const state = stateAtTrueAnomaly(model.orbit, (index / 240) * Math.PI * 2);
-    return `${index === 0 ? 'M' : 'L'} ${(cx + state.positionXM * scale).toFixed(2)} ${(cy - state.positionYM * scale).toFixed(2)}`;
-  });
-  return `${points.join(' ')} Z`;
 }
 
 function OrbitFigure({ model, progress = 0, construction = false, showEqualTimeArcs = false }: { model: ApsisOrbit; progress?: number; construction?: boolean; showEqualTimeArcs?: boolean }) {
@@ -62,16 +54,16 @@ function OrbitFigure({ model, progress = 0, construction = false, showEqualTimeA
   const apoapsisX = cx - model.apoapsisAU * scale;
   const earthX = cx + scale;
   const marsX = cx - 1.524 * scale;
-  const transferFrame = transferFrameAtProgress(model, progress);
+  const transferFrame = transferFrameAtProgress(model, progress, cx, cy, scale);
   const interval = transferSeconds * 0.05;
-  const probeX = cx + transferFrame.state.positionXM * scale;
-  const probeY = cy - transferFrame.state.positionYM * scale;
+  const probeX = transferFrame.x;
+  const probeY = transferFrame.y;
   const [arrivalStartX, arrivalStartY] = svgPoint(model, transferSeconds - interval);
   return <svg className="l3-orbit-svg" viewBox="0 0 720 500" role="img" aria-label="태양을 중심으로 한 지구 원궤도, 화성 원궤도와 탐사선 전이 타원">
     <circle cx={cx} cy={cy} r={scale} fill="none" stroke="#5c9fe2" strokeWidth="2" strokeDasharray="6 5"/>
     <circle cx={cx} cy={cy} r={1.524 * scale} fill="none" stroke="#db9870" strokeWidth="2" strokeDasharray="6 5"/>
-    {!construction && <path d={ellipsePath(model)} fill="rgba(112,211,198,.035)" stroke="#7894ae" strokeWidth="2" strokeDasharray="5 5"/>}
-    <path d={construction ? ellipsePath(model) : transferTrailPath(model, progress, cx, cy, scale)} fill="none" stroke="#59d7c6" strokeWidth={construction ? 4 : 7} strokeLinecap="round" opacity={construction ? 0.96 : 1}/>
+    {!construction && <path d={ellipseOrbitPath(model, cx, cy, scale)} fill="rgba(112,211,198,.035)" stroke="#b6c4d3" strokeWidth="3" strokeDasharray="7 5"/>}
+    <path d={construction ? ellipseOrbitPath(model, cx, cy, scale) : transferTrailPath(model, progress, cx, cy, scale)} fill="none" stroke="#59d7c6" strokeWidth={construction ? 4 : 7} strokeLinecap="round" opacity={construction ? 0.96 : 1}/>
     {showEqualTimeArcs && <>
       <path d={timedPath(model, 0, interval)} fill="none" stroke="#58dfce" strokeWidth="9" strokeLinecap="round"/>
       <path d={timedPath(model, transferSeconds - interval, transferSeconds)} fill="none" stroke="#ffad70" strokeWidth="9" strokeLinecap="round"/>
