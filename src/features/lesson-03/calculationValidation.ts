@@ -6,3 +6,7 @@ export function isRoundedNumericAnswer(input: string, expected: number, decimalP
   const halfUnit = 0.5 * 10 ** -decimalPlaces;
   return Math.abs(value - expected) <= halfUnit + Number.EPSILON * Math.max(1, Math.abs(expected)) * 4;
 }
+
+export function isRoundedNumericAnswerAmong(input: string, expectedValues: number[], decimalPlaces: number): boolean {
+  return expectedValues.some((expected) => isRoundedNumericAnswer(input, expected, decimalPlaces));
+}

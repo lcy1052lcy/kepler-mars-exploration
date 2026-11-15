@@ -36,7 +36,7 @@ const { PLANET_ECCENTRICITIES } = require(path.join(tempDirectory, 'planetEccent
 const { lessonOneSimulationState } = require(path.join(tempDirectory, 'lessonOneSimulation.cjs'));
 const { ellipseFromApsisDistancesAU, hohmannTransfer } = require(path.join(tempDirectory, 'transfers.cjs'));
 const { ellipseOrbitPath, transferFrameAtProgress, transferTrailPath } = require(path.join(tempDirectory, 'orbitAnimation.cjs'));
-const { isRoundedNumericAnswer } = require(path.join(tempDirectory, 'calculationValidation.cjs'));
+const { isRoundedNumericAnswer, isRoundedNumericAnswerAmong } = require(path.join(tempDirectory, 'calculationValidation.cjs'));
 const close = (actual, expected, relativeTolerance = 1e-10) => assert.ok(Math.abs(actual - expected) / Math.abs(expected) < relativeTolerance, `${actual} is not within tolerance of ${expected}`);
 
 test('circle has equal radii and coincident foci', () => {
@@ -170,6 +170,32 @@ test('ideal Earth-to-Mars Hohmann transfer has the expected ellipse and half-per
   close(transfer.periodYears, 1.417720660132386, 1e-12);
   close(transfer.transferDays, 258.911235556677, 1e-12);
   assert.equal(transfer.transferSeconds * 2, transfer.periodSeconds);
+});
+
+test('lesson 3 transfer calculations follow each selected apoapsis and accept rounded intermediate answers', () => {
+  const apoapsisValuesAU = [1.520, 1.524, 1.531];
+  const transfers = apoapsisValuesAU.map((apoapsisAU) => hohmannTransfer(1, apoapsisAU));
+
+  transfers.forEach((transfer, index) => {
+    const expectedSemiMajorAxisAU = (1 + apoapsisValuesAU[index]) / 2;
+    close(transfer.semiMajorAxisAU, expectedSemiMajorAxisAU, 1e-14);
+    close(transfer.periodYears, Math.sqrt(expectedSemiMajorAxisAU ** 3), 1e-5);
+    close(transfer.transferDays, transfer.periodYears * 365.25 / 2, 1e-12);
+    assert.equal(isRoundedNumericAnswer(expectedSemiMajorAxisAU.toFixed(3), transfer.semiMajorAxisAU, 3), true);
+
+    const roundedSemiMajorAxisAU = Number(transfer.semiMajorAxisAU.toFixed(3));
+    const periodFromRoundedAxis = Math.sqrt(roundedSemiMajorAxisAU ** 3);
+    assert.equal(isRoundedNumericAnswerAmong(periodFromRoundedAxis.toFixed(2), [transfer.periodYears, periodFromRoundedAxis], 2), true);
+
+    const travelFromRoundedPeriod = Number(transfer.periodYears.toFixed(2)) * 365.25 / 2;
+    assert.equal(isRoundedNumericAnswerAmong(travelFromRoundedPeriod.toFixed(1), [transfer.transferDays, travelFromRoundedPeriod], 1), true);
+    const roundedPeriodFromRoundedAxis = Number(periodFromRoundedAxis.toFixed(2));
+    const travelFromBothRoundedSteps = roundedPeriodFromRoundedAxis * 365.25 / 2;
+    assert.equal(isRoundedNumericAnswerAmong(travelFromBothRoundedSteps.toFixed(1), [transfer.transferDays, travelFromBothRoundedSteps], 1), true);
+  });
+
+  assert.equal(new Set(transfers.map((transfer) => transfer.semiMajorAxisAU)).size, 3);
+  assert.equal(new Set(transfers.map((transfer) => transfer.transferDays)).size, 3);
 });
 
 test('Hohmann transfer follows Kepler motion from Earth orbit to Mars orbit with slower arrival', () => {
