@@ -35,3 +35,7 @@
 .l3-sidebar-calculator .l3-calc-controls input,.l3-sidebar-calculator .l3-calc-controls select{width:100%;max-width:none;min-width:0;box-sizing:border-box}
 .l3-sidebar-calculator .l3-calc-controls button{width:100%}
 .l3-sidebar-calculator .l3-calc-controls output{overflow-wrap:anywhere}
+.l3-unit-help{margin-top:14px;padding:11px 12px;border:1px solid #d5dde5;background:#fff;color:#34465a}
+.l3-unit-help h3{margin:0 0 8px;font-size:15px;color:#26384b}
+.l3-unit-help p{margin:7px 0 0;font-size:13px;line-height:1.55}
+.l3-unit-help p:last-child{padding-top:7px;border-top:1px solid #e0e5ea;font-weight:700}
