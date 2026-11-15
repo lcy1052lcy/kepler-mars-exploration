@@ -10,3 +10,10 @@ export function isRoundedNumericAnswer(input: string, expected: number, decimalP
 export function isRoundedNumericAnswerAmong(input: string, expectedValues: number[], decimalPlaces: number): boolean {
   return expectedValues.some((expected) => isRoundedNumericAnswer(input, expected, decimalPlaces));
 }
+
+export function transferCalculationValues(apoapsisAU: number) {
+  if (!Number.isFinite(apoapsisAU) || apoapsisAU <= 1) throw new RangeError('apoapsisAU must be greater than the 1 AU periapsis');
+  const semiMajorAxisAU = (1 + apoapsisAU) / 2;
+  const periodYears = Math.sqrt(semiMajorAxisAU ** 3);
+  return { semiMajorAxisAU, periodYears, transferDays: periodYears * 365.25 / 2 };
+}
