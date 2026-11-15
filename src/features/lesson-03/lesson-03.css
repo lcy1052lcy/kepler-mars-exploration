@@ -21,3 +21,16 @@
 @media(max-width:760px){.l3-layout{grid-template-columns:1fr}.l3-teacher-strip{position:static;padding:0 0 12px}.l3-stage-heading h2{font-size:22px}.l3-orbit-panel{padding:12px}.l3-orbit-title{align-items:flex-start;flex-direction:column;gap:3px}.l3-controls,.l3-comparison-table{grid-template-columns:1fr}.l3-live-data{grid-template-columns:1fr 1fr}.l3-stage>p{font-size:15px}.l3-svg-label{font-size:13px}.l3-svg-hint,.l3-svg-earth-label,.l3-svg-mars-label,.l3-svg-sun-label{font-size:11px}}
 @media(max-width:480px){.l3-live-data{grid-template-columns:1fr}.l3-live-data p{grid-column:auto}.l3-distance-row{grid-template-columns:75px minmax(40px,1fr);gap:6px}.l3-distance-row>b{grid-column:2;text-align:left}.l3-law-list label{align-items:flex-start;flex-direction:column}.l3-playback progress{flex-basis:100%}.l3-stage .answer-options label{font-size:14px}}
 .l3-calc-orbit-key{display:grid;gap:6px;padding:10px 12px;background:#1a2940;color:#e5edf7;font-size:14px;line-height:1.55}.l3-calc-orbit-key p{display:flex;align-items:center;gap:8px;margin:0}.l3-calc-orbit-key i{display:inline-block;width:24px;border-top:3px dashed #91a4b9;flex:none}.l3-calc-orbit-key i.travelled-orbit{border-top-style:solid;border-color:#59d7c6}.l3-calc-orbit-key b{color:#fff}.l3-calc-orbit-key>span{padding-top:4px;color:#cfdae8}
+.l3-rounding-hint{margin:2px 0 9px!important;color:#596b7d;font-size:13px;font-weight:700}
+.l3-calculation-reflection{margin:18px 0;padding:16px 18px;border-left:4px solid #277f77;background:#eaf3ef;color:#304b42}
+.l3-calculation-reflection h3{margin:0 0 7px;font-size:19px;color:#25453b}
+.l3-calculation-reflection>p{margin:0 0 12px;line-height:1.7}
+.l3-calculation-reflection label{display:grid;gap:7px;font-weight:700}
+.l3-calculation-reflection textarea{width:100%;box-sizing:border-box;resize:vertical;border:1px solid #bccbc4;border-radius:4px;background:#fff;padding:10px 12px;color:#243246;font-family:inherit;font-size:15px;font-weight:400;line-height:1.6}
+.l3-sidebar-calculator{margin-top:20px;padding:12px;border-top:3px solid #177b72;background:#f1f4f6;color:#344255}
+.l3-sidebar-calculator h2{margin:0;font-size:16px;color:#26384b}
+.l3-sidebar-calculator .l3-calculator{margin:9px 0 0;padding:0;border:0}
+.l3-sidebar-calculator .l3-calc-controls{display:grid;grid-template-columns:1fr;align-items:stretch}
+.l3-sidebar-calculator .l3-calc-controls input,.l3-sidebar-calculator .l3-calc-controls select{width:100%;max-width:none;min-width:0;box-sizing:border-box}
+.l3-sidebar-calculator .l3-calc-controls button{width:100%}
+.l3-sidebar-calculator .l3-calc-controls output{overflow-wrap:anywhere}

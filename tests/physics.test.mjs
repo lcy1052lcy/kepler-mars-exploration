@@ -17,6 +17,7 @@ const sourcePaths = [
   path.resolve('src/physics/transfers.ts'),
   path.resolve('src/physics/index.ts'),
   path.resolve('src/features/lesson-03/orbitAnimation.ts'),
+  path.resolve('src/features/lesson-03/calculationValidation.ts'),
 ];
 const tempDirectory = await fs.mkdtemp(path.join(os.tmpdir(), 'kepler-physics-'));
 for (const file of sourcePaths) {
@@ -35,6 +36,7 @@ const { PLANET_ECCENTRICITIES } = require(path.join(tempDirectory, 'planetEccent
 const { lessonOneSimulationState } = require(path.join(tempDirectory, 'lessonOneSimulation.cjs'));
 const { ellipseFromApsisDistancesAU, hohmannTransfer } = require(path.join(tempDirectory, 'transfers.cjs'));
 const { ellipseOrbitPath, transferFrameAtProgress, transferTrailPath } = require(path.join(tempDirectory, 'orbitAnimation.cjs'));
+const { isRoundedNumericAnswer } = require(path.join(tempDirectory, 'calculationValidation.cjs'));
 const close = (actual, expected, relativeTolerance = 1e-10) => assert.ok(Math.abs(actual - expected) / Math.abs(expected) < relativeTolerance, `${actual} is not within tolerance of ${expected}`);
 
 test('circle has equal radii and coincident foci', () => {
@@ -249,4 +251,15 @@ test('transfer ellipse, trail, and probe coordinates stay visible inside the les
 test('ellipse from arbitrary apsides rejects invalid transfer distances', () => {
   assert.throws(() => ellipseFromApsisDistancesAU(1.2, 1), RangeError);
   assert.throws(() => ellipseFromApsisDistancesAU(0, 1.5), RangeError);
+});
+
+test('lesson 3 calculation answers accept rounded and nearby numeric values at the requested precision', () => {
+  assert.equal(isRoundedNumericAnswer('1.262', 1.262, 3), true);
+  assert.equal(isRoundedNumericAnswer('1.2624', 1.262, 3), true);
+  assert.equal(isRoundedNumericAnswer('1.42', 1.417720660132386, 2), true);
+  assert.equal(isRoundedNumericAnswer('1.418', 1.417720660132386, 2), true);
+  assert.equal(isRoundedNumericAnswer('258.9', 258.911235556677, 1), true);
+  assert.equal(isRoundedNumericAnswer('1.40', 1.417720660132386, 2), false);
+  assert.equal(isRoundedNumericAnswer('', 1.262, 3), false);
+  assert.equal(isRoundedNumericAnswer('not a number', 1.262, 3), false);
 });
