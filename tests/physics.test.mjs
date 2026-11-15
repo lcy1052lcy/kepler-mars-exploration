@@ -179,6 +179,18 @@ test('Hohmann transfer follows Kepler motion from Earth orbit to Mars orbit with
   assert.ok(departureDistance > arrivalDistance);
 });
 
+test('animation progress maps to changing Kepler positions along the transfer half-ellipse', () => {
+  const transfer = hohmannTransfer();
+  const frames = [0, 0.25, 0.5, 0.75, 1].map((progress) => stateAtTime(transfer.orbit, progress * transfer.transferSeconds));
+  for (let index = 1; index < frames.length; index += 1) {
+    assert.ok(frames[index].radiusM > frames[index - 1].radiusM, 'heliocentric distance should increase toward Mars orbit');
+    assert.ok(frames[index].positionXM !== frames[index - 1].positionXM || frames[index].positionYM !== frames[index - 1].positionYM, 'the rendered probe position should change between frames');
+    assert.ok(frames[index].speedMS < frames[index - 1].speedMS, 'heliocentric speed should decrease toward Mars orbit');
+  }
+  close(frames[0].radiusM / ASTRONOMICAL_UNIT_M, 1, 1e-12);
+  close(frames[4].radiusM / ASTRONOMICAL_UNIT_M, 1.524, 1e-12);
+});
+
 test('ellipse from arbitrary apsides rejects invalid transfer distances', () => {
   assert.throws(() => ellipseFromApsisDistancesAU(1.2, 1), RangeError);
   assert.throws(() => ellipseFromApsisDistancesAU(0, 1.5), RangeError);
