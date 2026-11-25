@@ -1,6 +1,6 @@
 import './lesson-completion.css';
 
-export default function LessonCompletion({ title, introduction, summaryTitle, summary, detail, nextLesson, onRestart }: {
+export default function LessonCompletion({ title, introduction, summaryTitle, summary, detail, nextLesson, onRestart, onSaveReport, reportButtonLabel }: {
   title: string;
   introduction: string;
   summaryTitle: string;
@@ -8,6 +8,8 @@ export default function LessonCompletion({ title, introduction, summaryTitle, su
   detail?: string;
   nextLesson: string;
   onRestart: () => void;
+  onSaveReport?: () => void;
+  reportButtonLabel?: string;
 }) {
   return <section className="lesson-completion" aria-label="차시 정리 완료">
     <div className="lesson-completion-mark" aria-hidden="true">✓</div>
@@ -22,6 +24,7 @@ export default function LessonCompletion({ title, introduction, summaryTitle, su
       <b>다음 차시</b>
       <p>{nextLesson}</p>
     </div>
+    {onSaveReport && <button className="lesson-completion-report" onClick={onSaveReport}>{reportButtonLabel ?? '탐구 보고서 PDF 저장'}</button>}
     <button className="lesson-completion-restart" onClick={onRestart}>처음부터 다시하기</button>
   </section>;
 }

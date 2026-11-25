@@ -9,3 +9,4 @@
 .lesson-completion-restart{margin-top:12px;padding:11px 20px;border:1px solid #718394;border-radius:5px;background:#fff;color:#26384a;font:inherit;font-weight:700;cursor:pointer}
 .lesson-completion-restart:hover{background:#f2f6f7}
 @media(max-width:600px){.lesson-completion{padding:20px 8px}.lesson-completion h2{font-size:22px}.lesson-completion-summary,.lesson-completion-preview{padding:13px 15px}}
+.lesson-completion-report{display:block;margin:8px auto;padding:10px 15px;border:1px solid #087f78;border-radius:4px;background:#087f78;color:#fff;font-weight:700;cursor:pointer}.lesson-completion-report:hover{background:#066d67}

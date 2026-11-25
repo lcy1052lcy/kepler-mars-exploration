@@ -7,8 +7,9 @@ import KeplerMarsTransferLesson from '../features/lesson-03/KeplerMarsTransferLe
 import MarsEncounterLesson from '../features/lesson-04/MarsEncounterLesson';
 import LessonCompletion from './LessonCompletion';
 import LessonStepNavigation from './LessonStepNavigation';
-import { clearLessonStoredState, isBoolean, isIndexList, isIntegerBetween, isNumberBetween, isString, useLessonStoredState } from './lessonProgress';
+import { clearLessonStoredState, flushLessonStoredState, isBoolean, isIndexList, isIntegerBetween, isNumberBetween, isString, useLessonStoredState } from './lessonProgress';
 import { lessonOneSimulationState } from './lessonOneSimulation';
+import { StudentReportManager, type StudentReportKind } from './StudentReports';
 
 type Step = 0 | 1 | 2 | 3;
 
@@ -70,6 +71,7 @@ function Feedback({ correct, children }: { correct: boolean; children: string })
 }
 
 export default function App() {
+  const [reportRequest, setReportRequest] = useState<StudentReportKind | 'choose' | null>(null);
   const [selectedLesson, setSelectedLesson] = useLessonStoredState('app', 'selectedLesson', 1, (value): value is number => isIntegerBetween(value, 1, 4));
   const [step, setStep] = useLessonStoredState<Step>('1', 'step', 0, (value): value is Step => isIntegerBetween(value, 0, 3));
   const [highestStep, setHighestStep] = useLessonStoredState('1', 'highestStep', 0, (value): value is number => isIntegerBetween(value, 0, 3));
@@ -159,13 +161,18 @@ export default function App() {
     setCompleted(true);
   }
 
+  function openReport(kind: StudentReportKind | 'choose') {
+    flushLessonStoredState(['app', '1', '2', '3', '4']);
+    setReportRequest(kind);
+  }
+
   return <div className="learning-app" id="top">
     <header className="learning-header">
       <a className="learning-brand" href="#top"><span className="brand-mark">K</span><span>케플러 법칙으로 떠나는 화성 탐사</span></a>
-      <nav className="lesson-tabs" aria-label="차시 이동">{lessons.map((item) => <button key={item.id} className={selectedLesson === item.id ? 'active' : ''} onClick={() => setSelectedLesson(item.id)}><span>{item.id}차시</span><small>{['타원 궤도', '속도와 주기', '화성 전이', '실제 탐사'][item.id - 1]}</small></button>)}</nav>
+      <nav className="lesson-tabs" aria-label="차시 이동">{lessons.map((item) => <button key={item.id} className={selectedLesson === item.id ? 'active' : ''} onClick={() => setSelectedLesson(item.id)}><span>{item.id}차시</span><small>{['타원 궤도', '속도와 주기', '화성 전이', '실제 탐사'][item.id - 1]}</small></button>)}</nav><button className="report-open-button" onClick={() => openReport('choose')}>탐구 보고서</button>
     </header>
 
-    {selectedLesson === 2 ? <KeplerLawsLesson /> : selectedLesson === 3 ? <KeplerMarsTransferLesson /> : selectedLesson === 4 ? <MarsEncounterLesson onReturnToLesson3={() => setSelectedLesson(3)}/> : <main className="lesson-main">
+    {selectedLesson === 2 ? <KeplerLawsLesson /> : selectedLesson === 3 ? <KeplerMarsTransferLesson onOpenRegularReport={() => openReport('regular')}/> : selectedLesson === 4 ? <MarsEncounterLesson onReturnToLesson3={() => setSelectedLesson(3)} onOpenAdvancedReport={() => openReport('advanced')}/> : <main className="lesson-main">
       <section className="lesson-intro">
         <div className="lesson-number">1차시 · 케플러 제1법칙</div>
         <h1>{lesson.title}</h1>
@@ -242,6 +249,7 @@ export default function App() {
         <aside className="teacher-strip"><b>조작 방법</b><p>이심률 손잡이를 끌어 궤도 모양을 바꾸세요. 실제 행성 모드에서는 행성 이름을 눌러 궤도를 비교합니다.</p>{!completed && <button onClick={restartFromBeginning}>처음부터 다시하기</button>}</aside>
       </section>
     </main>}
+    {reportRequest && <StudentReportManager initialKind={reportRequest === 'choose' ? null : reportRequest} onClose={() => setReportRequest(null)}/>}
   </div>;
 }
 

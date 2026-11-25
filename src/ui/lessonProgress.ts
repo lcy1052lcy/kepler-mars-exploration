@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from 
 
 const STORAGE_ROOT = 'kepler-mars-learning:v1';
 const resetEpoch = new Map<string, number>();
+const activeWriters = new Map<string, () => void>();
 
 function storageKey(scope: string, field: string): string {
   return `${STORAGE_ROOT}:${scope}:${field}`;
@@ -44,6 +45,16 @@ export function useLessonStoredState<T>(
   currentValue.current = value;
 
   useEffect(() => {
+    const flush = () => {
+      if ((resetEpoch.get(scope) ?? 0) === epoch) writeStoredValue(key, currentValue.current, fallbackJSON);
+    };
+    activeWriters.set(key, flush);
+    return () => {
+      if (activeWriters.get(key) === flush) activeWriters.delete(key);
+    };
+  }, [key, fallbackJSON, scope, epoch]);
+
+  useEffect(() => {
     const timeout = window.setTimeout(() => {
       if ((resetEpoch.get(scope) ?? 0) === epoch) writeStoredValue(key, value, fallbackJSON);
     }, 120);
@@ -77,6 +88,14 @@ export function clearLessonStoredState(lessonId: string | 'app'): void {
   } catch {
     // Resetting visible lesson state must still work if storage is unavailable.
   }
+}
+
+/** Flush the current in-memory values of mounted hooks before a report reads saved snapshots. */
+export function flushLessonStoredState(lessonIds: Array<string | 'app'>): void {
+  const scopes = new Set(lessonIds.map((lessonId) => lessonId === 'app' ? 'app' : `lesson-${lessonId}`));
+  activeWriters.forEach((flush, key) => {
+    if ([...scopes].some((scope) => key.startsWith(`${STORAGE_ROOT}:${scope}:`))) flush();
+  });
 }
 
 /** Read a lesson's existing localStorage fields without changing or resetting them. */

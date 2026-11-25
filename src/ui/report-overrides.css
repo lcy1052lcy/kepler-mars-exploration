@@ -1,0 +1,3 @@
+.l4-report-button{display:none!important}.sr-completion-report{margin:10px 0;padding:11px 15px;border:1px solid #0b726b;border-radius:4px;background:#0b766f;color:#fff;font-weight:700;cursor:pointer}.sr-completion-report:hover{background:#075f5a}
+.sr-area-shapes{display:grid;grid-template-columns:1fr 1fr;gap:8px}.sr-area-shapes .sr-figure{margin:4px 0}.sr-area-shapes svg{max-height:120px}
+@media print{.sr-backdrop{display:block!important;position:static!important;padding:0!important;background:none!important}.sr-dialog{display:none!important}.sr-print-root{display:block!important}.l4-report-print,.l4-report-print *{display:none!important;visibility:hidden!important}}
