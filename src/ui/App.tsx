@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { lessons } from '../content/lessons';
 import { PLANET_ECCENTRICITIES, PLANET_ECCENTRICITY_SOURCE } from '../content/planetEccentricities';
 import { ASTRONOMICAL_UNIT_M, ellipseGeometry } from '../physics';
@@ -7,9 +7,11 @@ import KeplerMarsTransferLesson from '../features/lesson-03/KeplerMarsTransferLe
 import MarsEncounterLesson from '../features/lesson-04/MarsEncounterLesson';
 import LessonCompletion from './LessonCompletion';
 import LessonStepNavigation from './LessonStepNavigation';
-import { clearLessonStoredState, flushLessonStoredState, isBoolean, isIndexList, isIntegerBetween, isNumberBetween, isString, useLessonStoredState } from './lessonProgress';
+import { clearLessonStoredState, flushLessonStoredState, isBoolean, isIndexList, isIntegerBetween, isNumberBetween, isString, readLessonStoredSnapshot, useLessonStoredState } from './lessonProgress';
 import { lessonOneSimulationState } from './lessonOneSimulation';
 import { StudentReportManager, type StudentReportKind } from './StudentReports';
+import './regular-progress.css';
+import { regularLearningProgress } from './regularProgress';
 
 type Step = 0 | 1 | 2 | 3;
 
@@ -72,6 +74,8 @@ function Feedback({ correct, children }: { correct: boolean; children: string })
 
 export default function App() {
   const [reportRequest, setReportRequest] = useState<StudentReportKind | 'choose' | null>(null);
+  const readRegularProgress = () => regularLearningProgress([1, 2, 3].map((id) => readLessonStoredSnapshot(String(id)).completed === true));
+  const [regularProgress, setRegularProgress] = useState(readRegularProgress);
   const [selectedLesson, setSelectedLesson] = useLessonStoredState('app', 'selectedLesson', 1, (value): value is number => isIntegerBetween(value, 1, 4));
   const [step, setStep] = useLessonStoredState<Step>('1', 'step', 0, (value): value is Step => isIntegerBetween(value, 0, 3));
   const [highestStep, setHighestStep] = useLessonStoredState('1', 'highestStep', 0, (value): value is number => isIntegerBetween(value, 0, 3));
@@ -90,6 +94,16 @@ export default function App() {
   const [focusAttempted, setFocusAttempted] = useLessonStoredState('1', 'focusAttempted', false, isBoolean);
   const [completed, setCompleted] = useLessonStoredState('1', 'completed', false, isBoolean);
   const [orbitInfo, setOrbitInfo] = useState<OrbitInfoKey | null>(null);
+
+  useEffect(() => {
+    const refresh = () => setRegularProgress(readRegularProgress());
+    window.addEventListener('kepler:regular-progress', refresh);
+    window.addEventListener('storage', refresh);
+    return () => {
+      window.removeEventListener('kepler:regular-progress', refresh);
+      window.removeEventListener('storage', refresh);
+    };
+  }, []);
 
   const activePlanet = PLANET_ECCENTRICITIES.find((planet) => planet.id === selectedPlanet)!;
   // Resolve the mode from the restored step so navigation and reload cannot retain a stale mode.
@@ -169,8 +183,9 @@ export default function App() {
   return <div className="learning-app" id="top">
     <header className="learning-header">
       <a className="learning-brand" href="#top"><span className="brand-mark">K</span><span>케플러 법칙으로 떠나는 화성 탐사</span></a>
-      <nav className="lesson-tabs" aria-label="차시 이동">{lessons.map((item) => <button key={item.id} className={selectedLesson === item.id ? 'active' : ''} onClick={() => setSelectedLesson(item.id)}><span>{item.id}차시</span><small>{['타원 궤도', '속도와 주기', '화성 전이', '실제 탐사'][item.id - 1]}</small></button>)}</nav><button className="report-open-button" onClick={() => openReport('choose')}>탐구 보고서</button>
+      <nav className="lesson-tabs" aria-label="학습 활동 이동">{lessons.map((item) => <button key={item.id} className={selectedLesson === item.id ? 'active' : ''} onClick={() => setSelectedLesson(item.id)}><span>{item.id === 4 ? '심화 탐구' : `${item.id}차시`}</span><small>{['타원 궤도', '속도와 주기', '화성 전이', '선택형'][item.id - 1]}</small></button>)}</nav><button className="report-open-button" onClick={() => openReport('choose')}>탐구 보고서</button>
     </header>
+    <div className="regular-progress" aria-label={`정규 학습 진행률 ${regularProgress.percent}%`}><span>정규 학습 진행률</span><progress max={regularProgress.total} value={regularProgress.completed}/><b>{regularProgress.percent}%</b><small>{regularProgress.completed}/{regularProgress.total}차시 완료</small></div>
 
     {selectedLesson === 2 ? <KeplerLawsLesson /> : selectedLesson === 3 ? <KeplerMarsTransferLesson onOpenRegularReport={() => openReport('regular')}/> : selectedLesson === 4 ? <MarsEncounterLesson onReturnToLesson3={() => setSelectedLesson(3)} onOpenAdvancedReport={() => openReport('advanced')}/> : <main className="lesson-main">
       <section className="lesson-intro">

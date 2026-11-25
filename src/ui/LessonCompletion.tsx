@@ -1,12 +1,13 @@
 import './lesson-completion.css';
 
-export default function LessonCompletion({ title, introduction, summaryTitle, summary, detail, nextLesson, onRestart, onSaveReport, reportButtonLabel }: {
+export default function LessonCompletion({ title, introduction, summaryTitle, summary, detail, nextLesson, nextLessonLabel, onRestart, onSaveReport, reportButtonLabel }: {
   title: string;
   introduction: string;
   summaryTitle: string;
   summary: string;
   detail?: string;
   nextLesson: string;
+  nextLessonLabel?: string;
   onRestart: () => void;
   onSaveReport?: () => void;
   reportButtonLabel?: string;
@@ -21,7 +22,7 @@ export default function LessonCompletion({ title, introduction, summaryTitle, su
       {detail && <small>{detail}</small>}
     </div>
     <div className="lesson-completion-preview">
-      <b>다음 차시</b>
+      <b>{nextLessonLabel ?? '다음 차시'}</b>
       <p>{nextLesson}</p>
     </div>
     {onSaveReport && <button className="lesson-completion-report" onClick={onSaveReport}>{reportButtonLabel ?? '탐구 보고서 PDF 저장'}</button>}

@@ -28,6 +28,7 @@ function writeStoredValue<T>(key: string, value: T, fallbackJSON: string): void 
   } catch {
     // Keep the in-memory lesson usable when storage is unavailable or full.
   }
+  if (/^kepler-mars-learning:v1:lesson-[1-3]:completed$/.test(key)) window.dispatchEvent(new Event('kepler:regular-progress'));
 }
 
 export function useLessonStoredState<T>(
@@ -88,6 +89,7 @@ export function clearLessonStoredState(lessonId: string | 'app'): void {
   } catch {
     // Resetting visible lesson state must still work if storage is unavailable.
   }
+  if (lessonId === '1' || lessonId === '2' || lessonId === '3') window.dispatchEvent(new Event('kepler:regular-progress'));
 }
 
 /** Flush the current in-memory values of mounted hooks before a report reads saved snapshots. */
