@@ -36,7 +36,7 @@ const { PLANET_ORBIT_DATA } = require(path.join(tempDirectory, 'planetOrbitData.
 const { PLANET_ECCENTRICITIES } = require(path.join(tempDirectory, 'planetEccentricities.cjs'));
 const { lessonOneSimulationState } = require(path.join(tempDirectory, 'lessonOneSimulation.cjs'));
 const { ellipseFromApsisDistancesAU, hohmannTransfer } = require(path.join(tempDirectory, 'transfers.cjs'));
-const { outboundCircleCrossing, evaluateMarsEncounter, circularPlanetAngle } = require(path.join(tempDirectory, 'encounter.cjs'));
+const { outboundCircleCrossing, evaluateMarsEncounter, circularPlanetAngle, encounterPositionToleranceAU, transferPositionAU } = require(path.join(tempDirectory, 'encounter.cjs'));
 const { ellipseOrbitPath, transferFrameAtProgress, transferTrailPath } = require(path.join(tempDirectory, 'orbitAnimation.cjs'));
 const { isRoundedNumericAnswer, isRoundedNumericAnswerAmong, transferCalculationValues } = require(path.join(tempDirectory, 'calculationValidation.cjs'));
 const close = (actual, expected, relativeTolerance = 1e-10) => assert.ok(Math.abs(actual - expected) / Math.abs(expected) < relativeTolerance, `${actual} is not within tolerance of ${expected}`);
@@ -105,6 +105,44 @@ test('Mars phase changes encounter result at the common probe crossing time', ()
   assert.equal(aligned.status, 'same-position');
   assert.ok(aligned.separationAU < 1e-8);
   assert.ok(Number.isFinite(circularPlanetAngle(0, crossing.elapsedSeconds, 686.98)));
+});
+test('ideal Earth-Mars phase is about 44.3 degrees and whole-degree slider resolution is reflected in encounter judgment', () => {
+  const model = ellipseFromApsisDistancesAU(1, 1.524);
+  const crossing = outboundCircleCrossing(model, 1.524);
+  assert.ok(crossing);
+  const probe = stateAtTime(model.orbit, crossing.elapsedSeconds);
+  const probeAngle = Math.atan2(probe.positionYM, probe.positionXM);
+  const idealPhase = probeAngle - crossing.elapsedSeconds / (686.98 * 86400) * 2 * Math.PI;
+  const idealDegrees = ((idealPhase * 180 / Math.PI) % 360 + 360) % 360;
+  close(idealDegrees, 44.3, 0.002);
+
+  const at45 = evaluateMarsEncounter(model, 45 * Math.PI / 180);
+  const at42 = evaluateMarsEncounter(model, 42 * Math.PI / 180);
+  assert.equal(at45.status, 'same-position', '45° is within one 1° slider step of the model alignment');
+  assert.equal(at42.status, 'different-position', 'a clearly separated setting remains a miss');
+  assert.ok(at45.separationAU <= at45.positionToleranceAU);
+  assert.ok(at45.angularDifferenceDeg < 1);
+  assert.ok(at42.separationAU > at42.positionToleranceAU);
+  close(at45.positionToleranceAU, encounterPositionToleranceAU(1.524));
+  const sceneProbe = transferPositionAU(model, crossing.elapsedSeconds);
+  const sceneMarsAngle = circularPlanetAngle(45 * Math.PI / 180, crossing.elapsedSeconds, 686.98);
+  const sceneSeparation = Math.hypot(sceneProbe.x - 1.524 * Math.cos(sceneMarsAngle), sceneProbe.y - 1.524 * Math.sin(sceneMarsAngle));
+  close(sceneSeparation, at45.separationAU, 1e-10);
+});
+test('encounter decision uses each student transfer orbit and reports no crossing when the apoapsis is short', () => {
+  const shortOrbit = ellipseFromApsisDistancesAU(1, 1.520);
+  assert.equal(evaluateMarsEncounter(shortOrbit, 45 * Math.PI / 180).status, 'no-orbit-crossing');
+
+  const extendedOrbit = ellipseFromApsisDistancesAU(1, 1.531);
+  const crossing = outboundCircleCrossing(extendedOrbit, 1.524);
+  assert.ok(crossing && crossing.elapsedSeconds < extendedOrbit.periodSeconds / 2);
+  const probe = stateAtTime(extendedOrbit.orbit, crossing.elapsedSeconds);
+  const probeAngle = Math.atan2(probe.positionYM, probe.positionXM);
+  const alignedStart = probeAngle - crossing.elapsedSeconds / (686.98 * 86400) * 2 * Math.PI;
+  const aligned = evaluateMarsEncounter(extendedOrbit, alignedStart);
+  assert.equal(aligned.status, 'same-position');
+  assert.ok(aligned.separationAU < 1e-8);
+  assert.equal(aligned.crossing?.elapsedSeconds, crossing.elapsedSeconds);
 });
 test('equal elapsed times sweep equal areas near perihelion and aphelion', () => {
   const orbit = { semiMajorAxisM: ASTRONOMICAL_UNIT_M, eccentricity: 0.65, gravitationalParameterM3S2: SOLAR_MU_M3_S2 };

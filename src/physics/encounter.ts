@@ -10,6 +10,16 @@ export interface MarsEncounterResult {
   probeAngleRad: number | null;
   marsAngleRad: number | null;
   separationAU: number | null;
+  angularDifferenceDeg: number | null;
+  positionToleranceAU: number;
+}
+
+/** The encounter slider advances in whole degrees; use one slider step as its physical resolution. */
+export function encounterPositionToleranceAU(orbitRadiusAU: number, sliderStepDeg = 1): number {
+  if (!Number.isFinite(orbitRadiusAU) || orbitRadiusAU <= 0 || !Number.isFinite(sliderStepDeg) || sliderStepDeg <= 0 || sliderStepDeg > 180) {
+    throw new RangeError('Orbit radius and slider step must be positive and finite');
+  }
+  return 2 * orbitRadiusAU * Math.sin((sliderStepDeg * Math.PI / 180) / 2);
 }
 
 /** Time of the outbound crossing of a circular orbit. The ellipse starts at periapsis on +x. */
@@ -40,17 +50,19 @@ export function evaluateMarsEncounter(
   marsStartAngleRad: number,
   marsPeriodDays = 686.98,
   marsOrbitRadiusAU = 1.524,
-  positionToleranceAU = 0.003,
+  positionToleranceAU = encounterPositionToleranceAU(marsOrbitRadiusAU),
 ): MarsEncounterResult {
   const crossing = outboundCircleCrossing(model, marsOrbitRadiusAU);
-  if (!crossing) return { status: 'no-orbit-crossing', crossing: null, probeAngleRad: null, marsAngleRad: null, separationAU: null };
+  if (!crossing) return { status: 'no-orbit-crossing', crossing: null, probeAngleRad: null, marsAngleRad: null, separationAU: null, angularDifferenceDeg: null, positionToleranceAU };
   const probe = stateAtTime(model.orbit, crossing.elapsedSeconds);
   const probeAngleRad = Math.atan2(probe.positionYM, probe.positionXM);
   const marsAngleRad = circularPlanetAngle(marsStartAngleRad, crossing.elapsedSeconds, marsPeriodDays);
   const marsX = marsOrbitRadiusAU * Math.cos(marsAngleRad);
   const marsY = marsOrbitRadiusAU * Math.sin(marsAngleRad);
   const separationAU = Math.hypot(probe.positionXM / ASTRONOMICAL_UNIT_M - marsX, probe.positionYM / ASTRONOMICAL_UNIT_M - marsY);
-  return { status: separationAU <= positionToleranceAU ? 'same-position' : 'different-position', crossing, probeAngleRad, marsAngleRad, separationAU };
+  const rawAngleDifference = Math.atan2(Math.sin(marsAngleRad - probeAngleRad), Math.cos(marsAngleRad - probeAngleRad));
+  const angularDifferenceDeg = Math.abs(rawAngleDifference) * 180 / Math.PI;
+  return { status: separationAU <= positionToleranceAU ? 'same-position' : 'different-position', crossing, probeAngleRad, marsAngleRad, separationAU, angularDifferenceDeg, positionToleranceAU };
 }
 
 /** Kepler-state point helper in AU, useful to keep drawing and numerical model aligned. */
